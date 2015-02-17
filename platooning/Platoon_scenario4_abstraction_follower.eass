@@ -1,0 +1,23 @@
+
+
+/*
+
+“Break Platoon”. All vehicles have REs. Switch from platoon control to cruise control+ siren. large latency. Abstract state: no messages has been received for certain amount of time.
+
+Leader doesn’t receive messages from vehicles and break the platoon. 
+Vehicles which don’t receive messages, independently decide to switch to control cruise. We want to verify that when the platoon breaks, vehicles do not follow each other and already in cruise control.
+
+*/
+
+:abstraction: follower1
+
+:Initial Beliefs:
+
+next_latency(0,1)
+next_latency(1,2)
+next_latency(2,3)
+next_latency(3,4)
+
+:Initial Goals:
+
+:Plans:

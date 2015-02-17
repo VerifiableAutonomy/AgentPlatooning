@@ -1,5 +1,6 @@
 package eass.platooning;
 
+import java.util.ArrayList;
 import java.util.Random;
 
 import ail.mas.ActionScheduler;
@@ -20,7 +21,9 @@ import ail.syntax.VarTerm;
 import ail.util.AILexception;
 import ajpf.util.AJPFLogger;
 import ajpf.util.VerifyMap;
+import eass.cruise_control.MotorWayEnv.Car;
 import eass.mas.DefaultEASSEnvironment;
+
 
 //import eass.mas.matlab.EASSMatLabEnvironment;
 
@@ -29,7 +32,7 @@ public class PlatoonEnvironment extends DefaultEASSEnvironment{
 	String logname = "eass.platooning.PlatoonEnvironment";
 
 	
-//	VerifyMap<String, Vehicle> vehicles = new VerifyMap<String, Vehicle>();
+	ArrayList<Vehicle> vehicles = new ArrayList<Vehicle>();
 	
 //	Vehicle v1 = new Vehicle(1);
 //	Vehicle v2 = new Vehicle(2);
@@ -54,25 +57,40 @@ public class PlatoonEnvironment extends DefaultEASSEnvironment{
 	 */
 	public void initialise() {
 		super.initialise();
+		vehicles.add(v3);
 		// If not connected to matlab make the scheduler more verification friendly.
-		if (!connectedtomatlab) {
-			NActionScheduler s = (NActionScheduler) getScheduler();
-			removePerceptListener(s);
-			ActionScheduler s1 = new ActionScheduler();
-			s1.addJobber(this);
-			setScheduler(s1);
-			addPerceptListener(s1);
-		}
+//		if (!connectedtomatlab) {
+//			NActionScheduler s = (NActionScheduler) getScheduler();
+//			removePerceptListener(s);
+//			ActionScheduler s1 = new ActionScheduler();
+//			s1.addJobber(this);
+//			setScheduler(s1);
+//			addPerceptListener(s1);
+//		}
 	}
 
 	public void eachrun() {
 		
-//		v3.update((new Random()).nextInt(10));		
-		v3.update();		
-		v3.execute("");
-		Literal distance = new Literal("distance");
-		distance.addTerm(new NumberTermImpl(v3.getDistance()));
-		addUniquePercept("abstraction_follower", distance);		
+		for (Vehicle v: vehicles) {
+			v.update();
+			v.execute("");
+
+			Literal distance = new Literal("distance");
+			distance.addTerm(new NumberTermImpl(v.getDistance()));
+			addUniquePercept("abstraction_follower"+ v.getID(), distance);		
+
+			Literal precedingPlatoonID = new Literal("precedingPID");
+//			precedingPlatoonID.addTerm(new NumberTermImpl(v.getPrecedingPID()));
+			precedingPlatoonID.addTerm(new NumberTermImpl(v.getprecedingPID()));
+			addPercept("abstraction_follower"+ v.getID(), precedingPlatoonID);
+			
+			Literal egoPlatoonID = new Literal("egoPID");
+//			egoPlatoonId.addTerm(new NumberTermImpl(v.getegoPID());
+			egoPlatoonID.addTerm(new NumberTermImpl(v.getegoPID()));
+			addPercept("abstraction_follower"+ v.getID(), egoPlatoonID);
+
+		}
+
 	}
 	
 	/*
@@ -95,16 +113,7 @@ public class PlatoonEnvironment extends DefaultEASSEnvironment{
 		Unifier u = new Unifier();
 		boolean printed = false;
 		 
-	   if (act.getFunctor().equals("assert_shared")) {
-		   addSharedBelief(agName, new Literal(true, new PredicatewAnnotation((Predicate) act.getTerm(0))));
-		   printed = true;
-	   } else  if (act.getFunctor().equals("remove_shared")) {
-		   removeSharedBelief(agName, new Literal(true, new PredicatewAnnotation((Predicate) act.getTerm(0))));
-		   printed = true;
-	   } else  if (act.getFunctor().equals("remove_shared_unifies")) {
-		   removeUnifiesShared(agName, new Literal(true, new PredicatewAnnotation((Predicate) act.getTerm(0))));
-	   } else if (act.getFunctor().equals("run")) {
-		   if (connectedtomatlab) {
+	   if (act.getFunctor().equals("run")) {
 			   int agentnum = Integer.parseInt(((String) agName).substring(14));
 			   Predicate predlist = (Predicate) act.getTerm(0);
 			   Predicate predargs = (Predicate) act.getTerm(1);
@@ -135,27 +144,13 @@ public class PlatoonEnvironment extends DefaultEASSEnvironment{
 				   predname += s;
 			   }
 			   System.out.println("real call for performing an action for "+ predname);
-			   v3.execute(predname);
-		   }  			   
-	   } else if (act.getFunctor().equals("perf")) {
-		   Predicate run = (Predicate) act.getTerm(0);
-		   Message m = new Message(2, agName, "abstraction", run);
-		   String abs = abstractionengines.get(agName);
-		   addMessage(abs, m);
-	   } else if (act.getFunctor().equals("query")) {
-		   Predicate query = (Predicate) act.getTerm(0);
-		   Message m = new Message(2, agName, "abstraction", query);
-		   String abs = abstractionengines.get(agName);
-		   addMessage(abs, m);
-	   }  else	if (act.getFunctor().equals("append_string_pred")) {
-    		StringTerm x = (StringTerm) act.getTerm(0);
-    		String y =  act.getTerm(1).toString();
-    		String append = x.getString() + y;
-    		VarTerm result = (VarTerm) act.getTerm(2);
-    		StringTermImpl z = new StringTermImpl(append);
-    		u.unifies(result, z);
-    		printed = true;
-    	} else {
+
+			   // send the predicate for vehicle to convert it to binary
+				for (Vehicle v: vehicles) {
+					if (agName.equals("abstraction_follower"+v.getID()))
+						v.execute(predname);
+				}
+	   }  else {
      		 u = super.executeAction(agName, act);
     		 printed = true;
     	}
@@ -166,4 +161,3 @@ public class PlatoonEnvironment extends DefaultEASSEnvironment{
 	   return u;
 	  }	  		
 }
-

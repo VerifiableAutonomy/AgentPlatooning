@@ -1,0 +1,46 @@
+
+/*
+	Platooning Scenario 3 FOLLOWER AGENT
+
+	Recoverable latency problems. All vehicles have REs + leader RE. vehicles adapt spacing parameters based on latency problems
+	An example of recoverable latency problem: if the difference between the time stamp on a message and the vehicle's clock is too great then the spacing should be double.
+	In this scenario, we are interested to know what is the platoon tolerance to latency. How far we can get the platoon together. 
+	How far can vehicles be from each other in order to still keep platoon. REs in vehicles independently decide about changing their spacing parameters and RE in leader decides 
+	how spacing parameter can grow. For instance, if two vehicles are too-far, then the leader should not allow more increase of space between those two vehicles otherwise the platoon 
+	breaks to parts that is described in Scenario 4.  
+
+	For recoverable latency problem, we can verify that too-far state (defined for this particular control strategy) is not reachable.
+
+*/
+
+
+:abstraction: follower
+
+:Initial Beliefs:
+
+next_latency(0,1)
+next_latency(1,2)
+next_latency(2,3)
+next_latency(3,4)
+
+:Initial Goals:
+
+:Plans:
+
++.received(:tell, B): {True} <- +B;
++.received(:perform, G): {True} <- +!G [perform];
+
+
+//+precedingPID(PID): {~B preceding_vehicle_platoon_member, 0 < PID}<- assert_shared(preceding_vehicle_platoon_member); // assume ID = 0 when a vehicle is not a member of the platoon
+//+precedingPID(PID): {B preceding_vehicle_platoon_member, PID < 1}<- remove_shared(preceding_vehicle_platoon_member); 
+
++precedingPID(X): {~ B latency(Y), X ==0 , ~B unrecoverable}<- assert_shared(latency(1));
++precedingPID(X): {~ B latency(Y), X != 0, ~B unrecoverable}<- assert_shared(latency(0));
+
++precedingPID(X): {B latency(Y), X == 0, B next_latency(Y,Z)}<- remove_shared(latency(Y)), assert_shared(latency(Z)),  print(Z);
++precedingPID(X): {B latency(Y), X == 0, ~B next_latency(Y,Z)}<- remove_shared(latency(Y)), assert_shared(unrecoverable), print(unrecoverable);
+
++precedingPID(X): {B latency(Y), Y != 0, X != 0, ~B unrecoverable}<- remove_shared(latency(Y)), assert_shared(latency(0)), print(0);
+
++!breaking_platoon [perform]: {True}<- run(breaking_platoon);
++!adjust_distance_parameter(X) [perform]: {True}<- run(pred(set_distance_parameter_for_latency),args(X));
