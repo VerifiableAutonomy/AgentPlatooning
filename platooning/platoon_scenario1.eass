@@ -1,0 +1,53 @@
+
+
+/*
+	Platooning Scenario 1
+	
+	Normal operation. No problem. Only one RE(reasoning engine) which does nothing. Abstract states to be monitored: too-far, too-close, Ok-distance. 
+	When platoon is in normal operation and there is no problem. We will have a reasoning engine (RE) which should react to too-far, too-close (with warning messages maybe) but not to OK-distance
+	and we hope to show in simulation that the too-far and too-close states don't occur and to use verification to prove that when too-far and too-close states don't occur 
+	then the agent takes no action.
+
+*/
+
+// requirements: too_close_threshold and too_far_threshold parameters
+
+
+EASS
+
+:abstraction: follower1
+
+:Initial Beliefs:
+
+too_close_threshold(3)
+too_far_threshold(6)
+
+:Initial Goals:
+
+:Plans:
++.received(:tell, B): {True} <- +B;
++.received(:perform, G): {True} <- +!G [perform];
+
++distance(Y): {~B status(too_close), B too_close_threshold(X), Y<X}<- remove_shared(status(too_far)), assert_shared(status(too_close));
++distance(Y): {~B status(too_far), B too_far_threshold(X), X<Y}<- remove_shared(status(too_close)), assert_shared(status(too_far));
++distance(Y): {B too_far_threshold(X), Y<X, B too_close_threshold(K), K<Y}<- remove_shared(status(too_far),status(too_close));
+
++!send_message(X) [perform] : {True }<- run(alarm(X));
+//+!send_message [perform] : {B status(too_close) }<- run(alarm);
+
+
+:name: follower1
+
+:Initial Beliefs:
+
+
+:Initial Goals:
+
+// maintain_distance [perform]
+
+:Plans:
+
++status(too_far): {True}<- perform(pred(send_message),args(far));
++status(too_close): {True}<- perform(pred(send_message),args(close));
+
+
