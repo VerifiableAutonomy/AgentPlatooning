@@ -1,0 +1,60 @@
+ 
+/*
+Vehicle break down. RE recognize power loss. All followers stop immediately
+
+Leader and vehicles recognise problem in a vehicle and break the platoon. 
+Vehicles, receiving a notice of failures from a vehicle, independently decide to switch to NOT control cruise. 
+We want to verify that when the platoon breaks, vehicles do not follow each other and are NOT in cruise control.
+
+The aim is to verify that vehicles stop before crashing. Probably we need to assume there is no communication delay.
+
+The difference between #4 and #5 is that when the platoon breaks vehicles should switch to different control strategies.
+
+*/
+
+:abstraction: follower
+
+:Initial Beliefs:
+
+too_close_threshold(3)
+too_far_threshold(6)
+lb_speed(20)
+hb_speed(100)
+lb_diff_speed(5)
+hb_diff_speed(40)
+
+:Initial Goals:
+
+:Plans:
+
++.received(:tell, B): {True} <- +B;
++.received(:perform, G): {True} <- +!G [perform];
+
++precedingPID(PID): {~B preceding_vehicle_platoon_member, 0 < PID}<- assert_shared(preceding_vehicle_platoon_member); // assume ID = 0 when a vehicle is not a member of the platoon
++precedingPID(PID): {B preceding_vehicle_platoon_member, PID < 1}<- remove_shared(preceding_vehicle_platoon_member); 
+
++egoPID(PID): {B no_platoon_member, 0 < PID}<- remove_shared(no_platoon_member);
++egoPID(PID): {~B no_platoon_member, PID == 0}<- assert_shared(no_platoon_member);
+
++distance(Y): {~B status(S), B too_close_threshold(X), Y < X}<- assert_shared(status(too_close));
++distance(Y): {~B status(too_close), B status(too_far), B too_close_threshold(X), Y < X}<- remove_shared(status(too_far)), assert_shared(status(too_close));
+
++distance(Y): {~B status(S), B too_far_threshold(X), X < Y}<- assert_shared(status(too_far));
++distance(Y): {~B status(too_far), B status(too_close), B too_far_threshold(X), X < Y}<- remove_shared(status(too_close)), assert_shared(status(too_far));
+
++distance(Y): {B too_far_threshold(X), Y < X, B too_close_threshold(K), K < Y, B status(S)}<- remove_shared(status(S));
+
++precedingSpeed(X): {~B no_platoon_member,
+					B preceding_vehicle_platoon_member, 
+					B status(too_close), 
+					B lb_speed(Y), X< Y, 
+					B hb_diff_speed(Z), B speed(K), Z< K-X, 
+					~B preceding_power_loss} <- assert_shared(preceding_power_loss);
+//+precedingSpeed(X): {~B no_platoon_member,
+//					B preceding_vehicle_platoon_member, 
+//					B lb_speed(Y), Y< X,
+//					B hb_diff_speed(Z), B speed(K), K-X< Z,
+//					B preceding_power_loss} <- remove_shared(preceding_power_loss); 
+					
++!switch_from_platoon_to_manual [perform]: {True}<- run(switch_from_platoon_to_manual);
++!release_platoonID [perform]: {True}<- run(release_platoonID);
