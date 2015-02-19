@@ -1,0 +1,153 @@
+
+/*
+	Platooning Scenario 2
+
+	A vehicle joins the platoon from behind, one vehicle RE + leader RE + simple joining protocol, Same for leaving platoon from behind. States to be monitored: joining-req, leaving-req
+
+	A vehicle at the end of the platoon sends a join or leave request to the leader. In case of joining, the leader through a simple joining protocol decides to authorise the vehicle 
+	to join and synchronise clocks. The vehicle receiving confirmation decides for itself to go through a series of switches in order to get to platoon control. 
+	We will then verify if the vehicle gets a confirmation from the leader for joining then it switches to platoon control and if the vehicle doesn’t get a confirmation from the leader
+	for joining then it stays on cruise control.
+
+	There are some temporal properties such as “if in some certain amount of time the last vehicle gets to Ok-distance, meaning the joining protocol satisfies the joining requirement” 
+	and “when a vehicle leaves the platoon, we can check after e.g., 2 sec., the vehicle is too-far from the platoon”. These remain for future work because at the moment we cannot 
+	verify them in AJPF. We need to investigate on how to export models from AJPF to UPPAAL.
+
+	Our assumption is that other vehicles do nothing. The focus is on coordination between the leader and a vehicle joining the platoon from behind.
+
+
+	ASSUMPTION: while a car from behind is joining, no car can leave platoon
+				last car has highest platoon_ID
+				(Design Decision) I am sending messages through abstract engine; communication between agents is in abstraction engine level; two REs don't talk to each other directly
+*/
+
+
+EASS
+
+//=================================== behind vehicle abstract engine ===============================================
+
+:abstraction: follower1
+
+:Initial Beliefs:
+vehicle_id(3)
+
+:Initial Goals:
+
+:Plans:
+
+//========== Input abstraction = {agreement, no_platoon_member, preceding_vehicle_platoon_member} ===========
+
++.received(:tell, B): {True} <- +B;
++.received(:perform, G): {True} <- +!G [perform];
+
++precedingPID(PID): {~B preceding_vehicle_platoon_member, 0 < PID}<- assert_shared(preceding_vehicle_platoon_member); // assume ID = 0 when a vehicle is not a member of the platoon
++precedingPID(PID): {B preceding_vehicle_platoon_member, PID < 1}<- remove_shared(preceding_vehicle_platoon_member); 
+
++egoPID(PID): {B no_platoon_member, 0 < PID}<- remove_shared(no_platoon_member);
++egoPID(PID): {~B no_platoon_member, PID < 1}<- assert_shared(no_platoon_member);
+
++leaderAgreement(X,Y): {B no_platoon_member, B vehicle_id(X), ~B agreement(X,Y)} <- assert_shared(agreement(X,Y));
+
+//========== Output reification = {switch_platoon_to_cruise, switch_cruise_to_platoon, request_to_join } =====
+
++!switch_platoon_to_cruise [perform]: {True}<- run(switch_platoon_to_cruise);
+
++!switch_cruise_to_platoon [perform]: {True}<- run(switch_cruise_to_platoon);
+
++!assign_platoon_id(X) [perform]: {True}<- run(assign_platoon_id(X));
+
++!request_to_join(X) [perform]: {True}<- run(request_to_join(X));
+
+
+//=================================== behind vehicle reasoning engine ===============================================
+
+:name: follower1
+
+:Initial Beliefs:
+
+//no_platoon_member
+vehicle_id(3)
+
+:Initial Goals:
+
+:Plans:
+
+/* Default plans for handling messages */
++.received(:tell, B): {True} <- +B;   
++.received(:perform, G): {True} <- +!G [perform];
++.received(:achieve, G): {True} <- +!G [achieve];
+
++!join_to_platoon_from_behind(X,Y) [achieve]: {B preceding_vehicle_platoon_member, B no_platoon_member}<- 
+				perf(pred(assign_platoon_id),args(Y)), perf(switch_cruise_to_platoon), remove_shared(no_platoon_member), remove_shared(agreement(X,Y)), +join_to_platoon_from_behind(X,Y), print(done); //, assert_shared(platoon_member);
+
+			
++!leave_platoon_from_behind [achieve]: {~B no_platoon_member} <- 
+				perf(switch_platoon_to_cruise), assert_shared(no_platoon_member); //, assert_shared(no_platoon_member);
+
++agreement(X,Y): {B no_platoon_member, B vehicle_id(X), B request_to_join(X) }<- -request_to_join(X), print(go_for_joining), +!join_to_platoon_from_behind(X,Y) [achieve];
+
+
++no_platoon_member: {B preceding_vehicle_platoon_member, B vehicle_id(X), ~B request_to_join(X)}<- print(send_request_to_join), perf(pred(request_to_join),args(X)), +request_to_join(X);
+
+
+//=================================== leader abstract engine ===============================================
+
+
+:abstraction: leader
+
+:Initial Beliefs:
+
+platoon_member(1) platoon_member(2) 
+//platoon_member(3)
+//platoon_member(4) platoon_member(5) platoon_member(6)
+//platoon_member(7) platoon_member(8)
+
+
+:Reasoning Rules:
+
+last_car(X) :- platoon_member(X), ~platoon_member(Y), [X < Y];
+
+
+:Initial Goals:
+
+:Plans:
+
++message(SENDER, REQ): {~B platoon_member(SENDER), ~B request_to_join(SENDER)}<- assert_shared(request_to_join(SENDER));
+
++check_tick(X, ID): {B platoon_member(X), ID < X}<- remove_assert(platoon_member(X)); // in each run check if we receive live bit (ID) from all members (X)
+
++check_tick(X, ID): {~B platoon_member(X), B last_car(Y), Y < ID } <- assert_shared(platoon_member(X));
+
++!agreement_preprocessing(SENDER) [perform]: {True}<- run(time_synchronisation), run(send_agreement(SENDER, SENDER)), remove_shared(request_to_join(SENDER)); //, run(send_agreement_message(x))
+
+//=================================== leader reasoning engine ===============================================
+
+
+:name: leader
+
+:Initial Beliefs:
+
+platoon_member(1) platoon_member(2) 
+//platoon_member(3)
+//platoon_member(4) platoon_member(5) platoon_member(6)
+//platoon_member(7) platoon_member(8)
+
+
+:Reasoning Rules:
+
+last_car(X) :- platoon_member(X), ~platoon_member(Y), [X < Y];
+
+:Initial Goals:
+
+:Plans:
+
+/* Default plans for handling messages */
++.received(:tell, B): {True} <- +B;   
++.received(:perform, G): {True} <- +!G [perform];
++.received(:achieve, G): {True} <- +!G [achieve];
+
+
++!request_to_join(SENDER) [achieve]: {~B platoon_member(SENDER), B last_car(Y), Y< SENDER}<- perf(pred(agreement_preprocessing),args(SENDER)), print(answertorequest);  //what are conditions to accept joining request?
+ 
+ 
+ 

@@ -1,0 +1,26 @@
+
+env = eass.platooning.PlatoonEnvironment_Scenario3
+
+mas.agent.1.file= /src/examples/eass/Platooning/platoon_scenario3_follower.eass
+mas.agent.1.builder= eass.EASSAgentBuilder
+mas.agent.1.name= follower1
+mas.agent.2.file= /src/examples/eass/Platooning/platoon_scenario3_abstraction_follower.eass
+mas.agent.2.builder= eass.EASSAgentBuilder
+mas.agent.2.name= abstraction_follower1
+
+mas.agent.3.file= /src/examples/eass/Platooning/platoon_scenario3_follower.eass
+mas.agent.3.builder= eass.EASSAgentBuilder
+mas.agent.3.name= follower2
+mas.agent.4.file= /src/examples/eass/Platooning/platoon_scenario3_abstraction_follower.eass
+mas.agent.4.builder= eass.EASSAgentBuilder
+mas.agent.4.name= abstraction_follower2
+
+log.warning = ajpf.MCAPLAgent,ajpf.MCAPLcontroller
+log.info = eass.mas.DefaultEnvironment
+log.format = brief
+log.fine = ail.semantics.AILAgent
+//log.fine = ail.syntax.EvaluationAndRuleBaseIterator
+
+# Eass Specific stuff
+
+connectedtomatlab = false

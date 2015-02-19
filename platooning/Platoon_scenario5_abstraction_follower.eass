@@ -1,0 +1,21 @@
+
+/*
+Vehicle break down. RE recognize power loss. All followers stop immediately
+
+Leader and vehicles recognise problem in a vehicle and break the platoon. 
+Vehicles, receiving a notice of failures from a vehicle, independently decide to switch to NOT control cruise. 
+We want to verify that when the platoon breaks, vehicles do not follow each other and are NOT in cruise control.
+
+The aim is to verify that vehicles stop before crashing. Probably we need to assume there is no communication delay.
+
+The difference between #4 and #5 is that when the platoon breaks vehicles should switch to different control strategies.
+
+*/
+
+:abstraction: follower
+
+:Initial Beliefs:
+
+:Initial Goals:
+
+:Plans:
