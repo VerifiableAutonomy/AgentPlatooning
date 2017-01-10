@@ -1,0 +1,30 @@
+// vehicle abstract model
+:name: vehicle
+
+:Initial Beliefs:
+
+
+:Reasoning Rules:
+
+leave:- ~join;
+
+:Initial Goals:
+
+start_verification [perform]
+
+:Plans:
+
+/* Default plans for handling messages */
++.received(:tell, B): {True} <- +B;   
+
++!start_verification [perform]: {~B ready_to_join}<- +ready_to_join, .send(follower3, :tell, ready_to_join);
+
++perf_join_ok_for_assurance: {True} <- +.lock, .send(follower3, :tell, changed_lane), -perf_join_ok_for_assurance, -.lock;
+
++perf_join_ok: {B vehicle_failed} <- +.lock, .send(follower3, :tell, changed_lane), -perf_join_ok, -vehicle_failed, -.lock;
+
++perf_join_ok: {~B vehicle_failed} <- +.lock, .send(follower3, :tell, vehicle_failed), -perf_join_ok, +vehicle_failed, -.lock;
+
++perf_speed_contr: {True} <- +.lock, .send(follower3, :tell, initial_distance), -perf_speed_contr, -.lock;
+
++perf_set_spacing: {True} <- +.lock, .send(follower3, :tell, spacing), -perf_set_spacing, -.lock;

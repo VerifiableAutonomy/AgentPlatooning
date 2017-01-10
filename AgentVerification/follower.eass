@@ -1,0 +1,255 @@
+// ----------------------------------------------------------------------------
+// Copyright (C) 2015 Louise A. Dennis, Michael Fisher, Maryam Kamali, Owen McAree 
+// and Sandor Veres
+// 
+// This file is part of the Engineering Autonomous Space Software (EASS) Library.
+// 
+// The EASS Library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 3 of the License, or (at your option) any later version.
+// 
+// The EASS Library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Lesser General Public License for more details.
+// 
+// You should have received a copy of the GNU Lesser General Public
+// License along with the EASS Library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+// 
+// To contact the authors:
+// http://www.csc.liv.ac.uk/~lad
+//
+//----------------------------------------------------------------------------
+:name: follower
+
+:Initial Beliefs:
+// Agent starts believing it is not in a  platoon
+speed_controller(0)
+steering_controller(0)
+leave_ok
+not_stopped
+name(follower3)
+name_front(follower1)
+
+
+
+:Reasoning Rules:
+
+platoon_m(X, Y):- platoon_ok, name(X);
+leave_platoon:- leave_ok;
+set_spacing(X):- ack_spacing(X);
+
+
+:Initial Goals:
+
+:Plans:
+
+//======= Specialised messaging plans to improve efficiency.
++.received(:tell, B): {True}<- +B;
++.received(:tell, join_agreement(X, Y)): {G do_join[perform], ~B join_agreement(X, Y)} <- +join_agreement(X, Y);   
++.received(:tell, leave_agreement(Y)): {G do_leave[perform], ~B leave_agreement(Y)} <- +leave_agreement(Y);   
++.received(:tell, platoon_m): {G do_join[perform], B steering_controller(1), ~B platoon_m} <- +platoon_m;
++.received(:tell, no_platoon_m): {G do_leave[perform], B steering_controller(0), B changed_lane, B leave_agreement(X), ~B no_platoon_m} <- +no_platoon_m;
+
++.received(:achieve, set_spacing(X1)): {B name(K), B platoon_m(K, F), ~G do_leave [perform], ~G set_spacing(X1) [achieve]} <- -ack_spacing(X1), +!set_spacing(X1) [achieve];
++.received(:achieve, set_spacing(X1)): {B name(K), B platoon_m(K, F), G do_leave [perform], ~G set_spacing(X1) [achieve], ~B leave_agreement(K)} <- -ack_spacing(X1), +!set_spacing(X1) [achieve];
++.received(:achieve, set_spacing(X1)): {B name(K)} <- .send(leader, :tell, set_spacing_from_failed(X1, K));
+
+
+//===========initialisation phase-- vehicle joins to platoon after 50 sec
+// Not used in verification?
++id(1): {True}<- perf(join_ok(1));
++id(2): {True}<- perf(join_ok(1));
++id_front(X): {B id(3)}<- perf(join_position(X));
+
++platoon_set_up(X, Y): {B name(X), B preceding(Y), ~B preceding(none)}<- 
+	+.lock,
+	+!speed_controller(1) [achieve],
+	+!steering_controller(1) [achieve],
+	+platoon_m(X, Y),
+	-.lock;
+
++wrong_front: {G platoon_m(SENDER, FRONT3) [achieve]}
+	      <- 
+	  -!platoon_m(SENDER, FRONT3) [achieve], 
+           print(belief_not_able_to_join_to_front_of_a_non_platoon_member);
+
+//====Joining
++ready_to_join: {B name(Name), B name_front(FRONT), ~B platoon_m(Name, FRONT),
+		~G do_leave [perform], ~G do_join[perform]} <- +! do_join [perform];
++ready_to_join: {True} <- -ready_to_join;
+
++! do_join [perform]: {B name(Name), B name_front(FRONT), ~B platoon_m(Name, FRONT),
+		~G do_leave [perform], ~G platoon_m(Name, FRONT) [achieve]} <-
+                                // get rid of any beliefs related to prevoius join platoon maneuvers
+		+.lock,
+		-join_agreement(Name, FRONT), -platoon_m, -ready_to_join, -leave_agreement(Name), -platoon(Name, none),
+		// following line for removing shared beliefs and waiting for updated beliefs ----- added for mutli-agent verification purpose
+		-changed_lane, -initial_distance, 
+		-.lock,
+		+!platoon_m(Name, FRONT) [achieve], +!timer_to_leave [perform];
+		//print(follower_3_drop_goal_or_successfully_joined_in_the_middle), +ready_to_leave;
++! do_join[perform]: {True} <- -ready_to_join;
+
+// just for verification purpose
++!timer_to_leave [perform]: {True} <- +ready_to_leave;
+
+
+
+//+comm_failed: {G platoon_m(SENDER, FRONT) [achieve], B name(SENDER), ~B join_agreement(SENDER, FRONT), B name_front(FRONT)} <- 
+//		-comm_failed,
+//		+!speed_controller(0) [achieve], 
+//		+!steering_controller(0) [achieve], 
+//		.send(leader, :tell, message(SENDER, 1, FRONT)), 
+//		*join_agreement(SENDER, FRONT);
+
+
+// we add another join goal to verify correctness of joining goal in case of no vehicle error
++vehicle_failed: {G platoon_m(SENDER, FRONT) [achieve], ~B changed_lane, B join_agreement(SENDER, FRONT), B name_front(FRONT)} <-
+		+! speed_controller(0) [achieve],
+		+! steering_controller(0) [achieve], +leave_ok, -join_agreement(SENDER, FRONT),
+		-!platoon_m(SENDER, FRONT) [achieve], +!do_join [perform];		
+
++!platoon_m(SENDER, FRONT) [achieve]: {~B join_agreement(SENDER, FRONT)} <- 
+		// get rid of any beliefs related to prevoius leave platoon maneuvers.  
+		// Delayed until after platoon_m goal established  to prevent
+		// a leave_platoon goal being established at the same time.
+		+! clean_up_beliefs_on_joining [perform],
+		+! speed_controller(0) [achieve],
+		+! steering_controller(0) [achieve], -platoon_m,
+		.send(leader, :tell, message(SENDER, 1, FRONT)), 
+		*join_agreement(SENDER, FRONT);
++!platoon_m(SENDER, FRONT) [achieve]: {~B changed_lane, B join_agreement(SENDER, FRONT)} <-
+		+! clean_up_beliefs_on_joining [perform],
+		+! speed_controller(0) [achieve],
+		+! steering_controller(0) [achieve], -platoon_m, -vehicle_failed,
+		perf(join_ok(1)), .send(vehicle3, :tell, perf_join_ok),
+		*changed_lane;
++!platoon_m(SENDER, FRONT) [achieve]: {~B initial_distance, B join_agreement(SENDER, FRONT), B changed_lane} <-
+		+! clean_up_beliefs_on_joining [perform],
+		+! steering_controller(0) [achieve], -platoon_m,
+		+! speed_controller(1) [achieve], .send(vehicle3, :tell, perf_speed_contr),
+		*initial_distance;
++!platoon_m(SENDER, FRONT) [achieve]: {~B speed_controller(1), B join_agreement(SENDER, FRONT), B changed_lane, B initial_distance} <-
+		+! speed_controller(1) [achieve];
++!platoon_m(SENDER, FRONT) [achieve]: {~B steering_controller(1), B speed_controller(1), B join_agreement(SENDER, FRONT), B changed_lane, B initial_distance} <-
+		+! steering_controller(1) [achieve], -platoon_m;
++!platoon_m(SENDER, FRONT) [achieve]: {~B platoon_m, B join_agreement(SENDER, FRONT), B changed_lane, B initial_distance, B speed_controller(1), B steering_controller(1)} <-
+		.send(leader, :tell, message(SENDER, 2)), 
+		*platoon_m;
++!platoon_m(SENDER, FRONT) [achieve]: {B join_agreement(SENDER, FRONT), B platoon_m, B changed_lane, B initial_distance, B speed_controller(1), B steering_controller(1)} <-
+		+.lock,
+		// Clean up beliefs from messsages
+		-no_platoon_m, -platoon_m,
+		+platoon_ok,
+ 		-.lock;
+
+
++!clean_up_beliefs_on_joining [perform]: {B ack_spacing(X)} <-
+ 		+.lock,
+		-no_platoon_m, -leave_ok, -ready_to_join, -ack_spacing(X), -platoon_m,
+		-.lock;
++!clean_up_beliefs_on_joining [perform]: {~B ack_spacing(X)} <-
+		+.lock,
+		-no_platoon_m, -leave_ok, -ready_to_join, -platoon_m,
+		-.lock;
+
+//====== Control of speed and steering
++!speed_controller(0) [achieve]: {~B ack_spacing(X) } <- 
+                +.lock, perf(speed_controller(0)), -speed_controller(1), +speed_controller(0), -.lock;
++!speed_controller(0) [achieve]: {B ack_spacing(X) } <- 
+                +.lock, -ack_spacing(X), perf(speed_controller(0)), -speed_controller(1), +speed_controller(0), -.lock;
++!speed_controller(1) [achieve]: {True} <- 
+                +.lock, perf(speed_controller(1)), -speed_controller(0), +speed_controller(1), -.lock;
+
++!steering_controller(0) [achieve]: {True} <-  
+                +.lock, perf(steering_controller(0)), -steering_controller(1), +steering_controller(0), -.lock;
++!steering_controller(1) [achieve]: {B speed_controller(1)} <-  
+                +.lock, perf(steering_controller(1)), -steering_controller(0), +steering_controller(1), -.lock;
++!steering_controller(1) [achieve]: {~B speed_controller(1)}<-  
+                +!speed_controller(1) [achieve], +.lock, perf(steering_controller(1)), -steering_controller(0), +steering_controller(1), -.lock;
+
+
+//====== Situations when set spacing should be ignored or dropped.
+
++leave_agreement(Y) : {G set_spacing(X) [achieve], G leave_platoon [achieve]} <-
+		.send(leader, :tell, set_spacing_from_failed(X, Y)),
+		-!set_spacing(X) [achieve];
+							
++!set_spacing(X5) [achieve]: {B platoon_m(K, F), G do_leave[perform], B name(K), ~B leave_agreement(K)} <-
+		-spacing, -ack_spacing(X20),
+		perf(set_spacing(X5)), .send(vehicle3, :tell, perf_set_spacing),
+		*spacing,
+		.send(leader, :tell, set_spacing_from(K)), 							
+		+ack_spacing(X5);
++!set_spacing(X15) [achieve]: {B platoon_m(K, F), ~G do_leave[perform], B name(K)} <- 
+		-spacing, -ack_spacing(X21),
+		perf(set_spacing(X15)), .send(vehicle3, :tell, perf_set_spacing),
+		*spacing,
+		.send(leader, :tell, set_spacing_from(K)), 
+		+ack_spacing(X15); 
+
+							
+// ============ leaving
+
++ready_to_leave: {B name(follower3), ~G do_join [perform], ~G do_leave [perform], ~B leave_platoon, ~G set_spacing(X) [achieve], B platoon_ok} <- 
+		+! do_leave [perform];
++ready_to_leave: {True} <- -ready_to_leave;
+
+// In this case after failing to change lane, another attempt of changing lane is started and remove the leaving goal
+//+vehicle_failed: {G leave_platoon [achieve], ~B changed_lane, B name(X), B leave_agreement(X)} <- 
+//		+!speed_controller(0) [achieve], -no_platoon_m, 
+//		+!steering_controller(0) [achieve], -no_platoon_m, vehicle_failed,
+//		perf(join_ok(0)), .send(vehicle3, :tell, perf_join_ok), -no_platoon_m, 
+//		-!leave_platoon [achieve],
+//		*changed_lane;
+
+// In this case (modeled in Uppaal), we rejoin to the platoon and let the follower to attempt to leave another time
++vehicle_failed: {G leave_platoon [achieve], ~B changed_lane, B name(X), B leave_agreement(X)} <- 
+		+.lock, +!speed_controller(1) [achieve], -no_platoon_m, 
+		+!steering_controller(1) [achieve], -no_platoon_m, 
+		perf(join_ok(0)), .send(vehicle3, :tell, perf_join_ok_for_assurance), -no_platoon_m, -leave_agreement(X),
+		.send(leader, :tell, failed_to_leave(X)),
+		-!leave_platoon [achieve], -.lock;
+
++!do_leave [perform] : {B name(Name), B name_front(Front), ~G do_join[perform], ~G leave_platoon [achieve], ~B leave_platoon, ~G set_spacing(X) [achieve]} <-
+		// Clear out any beliefs from previous leave platoon maneuvers
+		+.lock,
+		-leave_agreement(Name), -no_platoon_m, -ready_to_leave, -join_agreement(Name, Front), 
+		// following line for removing shared beliefs and waiting for updated beliefs ----- added for mutli-agent verification purpose
+		-changed_lane, -vehicle_failed,	-initial_distance,	
+		-.lock,
+		+!leave_platoon [achieve]; 
+		//print(follower_3_drop_goal_or_successfully_left_platoon);
++!do_leave [perform]: {True} <- -ready_to_leave;
+
++!leave_platoon [achieve]: {B name(X), ~B leave_agreement(X)} 	<- 
+		// Clear out any beliefs from previous join platoon maneuvers.  Delayed to prevent another join platoon goal being establishe
+		+!clean_up_beliefs_on_leaving [perform],
+		.send(leader, :tell, message(X, 0)), 
+		*leave_agreement(X);
++!leave_platoon [achieve]: {~B changed_lane, B name(X), B leave_agreement(X)} 	<- 
+		+!clean_up_beliefs_on_leaving [perform],
+		+!speed_controller(0) [achieve], -no_platoon_m, 
+		+!steering_controller(0) [achieve], -no_platoon_m, 
+		perf(join_ok(0)), .send(vehicle3, :tell, perf_join_ok), -no_platoon_m, -vehicle_failed, 
+		*changed_lane;
++!leave_platoon [achieve]: {~B steering_controller(0), B name(X), B leave_agreement(X), B changed_lane} 	<- 
+		+!speed_controller(0) [achieve], -no_platoon_m, 
+		+!steering_controller(0) [achieve], -no_platoon_m;
++!leave_platoon [achieve]: {~B no_platoon_m, B name(X), B leave_agreement(X), B changed_lane, B steering_controller(0), B speed_controller(0)} 	<- 
+		.send(leader, :tell, message(X, 2)),
+	   	*no_platoon_m;
++!leave_platoon [achieve]: {B name(X), B leave_agreement(X), B changed_lane, B no_platoon_m, B steering_controller(0), B speed_controller(0)} 	<- 
+		+.lock,
+		-platoon_m, 
+		-platoon_ok, 
+		+leave_ok,
+		-.lock;
+
++!clean_up_beliefs_on_leaving [perform]: {True} <-
+		+.lock,
+		-no_platoon_m, -ready_to_leave, -platoon_m,
+		-.lock;

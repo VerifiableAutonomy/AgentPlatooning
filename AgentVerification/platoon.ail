@@ -1,0 +1,46 @@
+// ----------------------------------------------------------------------------
+// Copyright (C) 2015 Louise A. Dennis, Michael Fisher, Maryam Kamali, Owen McAree 
+// and Sandor Veres
+// 
+// This file is part of the Engineering Autonomous Space Software (EASS) Library.
+// 
+// The EASS Library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 3 of the License, or (at your option) any later version.
+// 
+// The EASS Library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Lesser General Public License for more details.
+// 
+// You should have received a copy of the GNU Lesser General Public
+// License along with the EASS Library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+// 
+// To contact the authors:
+// http://www.csc.liv.ac.uk/~lad
+//
+//----------------------------------------------------------------------------
+
+env = eass.verification.platoon.modelExtractionForVerification6Jan17.PlatoonEnvironment
+
+mas.agent.1.file= /src/examples/eass/verification/platoon/modelExtractionForVerification6Jan17/follower.eass
+mas.agent.1.builder= eass.EASSAgentBuilder
+mas.agent.1.name= follower3
+
+mas.agent.2.file= /src/examples/eass/verification/platoon/modelExtractionForVerification6Jan17/leader.eass
+mas.agent.2.builder= eass.EASSAgentBuilder
+mas.agent.2.name= leader
+
+mas.agent.3.file= /src/examples/eass/verification/platoon/modelExtractionForVerification6Jan17/vehicle.eass
+mas.agent.3.builder= eass.EASSAgentBuilder
+mas.agent.3.name= vehicle3
+
+ajpf.transition_every_reasoning_cycle = false
+ail.store_sent_messages = false
+
+//log.warning = ajpf.MCAPLcontroller
+//log.info = eass.mas.DefaultEnvironment,ajpf.MCAPLAgent,
+//log.fine = ail.semantics.AILAgent
+//log.format = brief

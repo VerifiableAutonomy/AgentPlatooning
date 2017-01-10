@@ -1,0 +1,57 @@
+// abstract communication model
+:name: leader
+
+:Initial Beliefs:
+
+:Reasoning Rules:
+
+:Initial Goals:
+
+:Plans:
+
+/* Default plans for handling messages */
++.received(:tell, B): {True} <- +B;   
+
+// note: change plan condition for join_req from True to B comm
++message(SENDER, 1, FRONT): {True} <- +.lock, -message(SENDER, 1, FRONT), 
+	.send(SENDER, :tell, join_agreement(SENDER, FRONT)), -comm_failed, -.lock;
+
+// note: change condition for join_req in above plan to B comm
+//+message(SENDER, 1, FRONT): {True} <- +.lock, -message(SENDER, 1, FRONT), 
+//	.send(SENDER, :tell, comm_failed), +comm_failed, -.lock;
+		 								 						
++message(SENDER, 2): {~B leave} <- +.lock, .send(SENDER,:tell, platoon_m), 
+	-message(SENDER, 2), -.lock;
+
+// note: change plan condition for join_req from True to B comm
++message(SENDER, 0)	: {True} <- +.lock, .send(SENDER, :achieve, set_spacing(17)),
+	+leave, -message(SENDER, 0), -comm_failed, -.lock, *set_spacing_from(SENDER);
+
+//+message(SENDER, 0)	: {True} <- +.lock, .send(SENDER, :tell, comm_failed), 
+//	+comm_failed, -message(SENDER, 0), -.lock;
+
++set_spacing_from(SENDER): {B leave, ~B failed_to_leave(SENDER)} <- +.lock, 
+	.send(SENDER, :tell, leave_agreement(SENDER)), 
+	-set_spacing_from(SENDER), -.lock, *message(SENDER, 2);	
+
++message(SENDER, 2): {B leave} <- +.lock, .send(SENDER,:tell, no_platoon_m), 
+	-message(SENDER, 2), -message(SENDER, 0), -leave, -.lock;
+	//+!test_spacing(follower3, 17) [perform], -.lock; 						
+
++failed_to_leave(SENDER): {True} <- .send(follower3, :achieve, set_spacing(5)), 
+	*set_spacing_from(SENDER);
+
++set_spacing_from(SENDER): {B leave, B failed_to_leave(SENDER), ~B another_attempt_to_leave} <- 
+	print(spacing_done_after_unsuccessful_leave_and_first_attempt_set), +another_attempt_to_leave, 
+	.send(SENDER, :tell, ready_to_leave), -leave, -set_spacing_from(SENDER), 
+	-failed_to_leave(SENDER);
+
++set_spacing_from(SENDER): {B leave, B failed_to_leave(SENDER), B another_attempt_to_leave} <- 
+	print(spacing_done_after_unsuccessful_leave), 
+	-leave, -set_spacing_from(SENDER), 
+	-failed_to_leave(SENDER);
+
++!test_spacing(follower3, 17) [perform]: {True} <- +.lock, .send(follower3, :achieve, set_spacing(17)),
+	*set_spacing_from(SENDER), +!test_switch_steering [perform];
+	
++!test_switch_steering [perform]: {True} <- .send(follower3, :achieve, steering_controller(0));

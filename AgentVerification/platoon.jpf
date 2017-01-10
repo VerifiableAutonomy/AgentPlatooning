@@ -1,0 +1,45 @@
+// ----------------------------------------------------------------------------
+// Copyright (C) 2015 Louise A. Dennis, Michael Fisher, Maryam Kamali, Owen McAree 
+// and Sandor Veres
+// 
+// This file is part of the Engineering Autonomous Space Software (EASS) Library.
+// 
+// The EASS Library is free software; you can redistribute it and/or
+// modify it under the terms of the GNU Lesser General Public
+// License as published by the Free Software Foundation; either
+// version 3 of the License, or (at your option) any later version.
+// 
+// The EASS Library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+// Lesser General Public License for more details.
+// 
+// You should have received a copy of the GNU Lesser General Public
+// License along with the EASS Library; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+// 
+// To contact the authors:
+// http://www.csc.liv.ac.uk/~lad
+//
+//----------------------------------------------------------------------------
+
+@using = mcapl
+
+target = ail.util.AJPF_w_AIL
+target.args =src/examples/eass/verification/platoon/modelExtractionForVerification6Jan17/platoon.ail,src/examples/eass/verification/platoon/modelExtractionForVerification6Jan17/platoon.psl,req1_1
+
+//log.info = ail.mas.DefaultEnvironment,eass.mas.verification.EASSVerificationEnvironment,eass.verification.platoon.modelExtraction.PlatoonEnvironment,ajpf.product.Product
+//log.fine = ail.semantics.AILAgent
+
+listener+=,.listener.ExecTracker
+et.print_insn=false
+et.show_shared=false
+
+// ajpf.transition_every_reasoning_cycle = true
+
+// vm.storage.class=gov.nasa.jpf.vm.DebugJenkinsStateSet
+
+ajpf.model_only= false
+ajpf.model.path = ${mcapl}/src/examples/eass/verification/platoon/modelExtraction/
+ajpf.model.location = generatedPlatoon.txt
+
