@@ -1,0 +1,899 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+
+const int V = 5+1;
+
+typedef int[0,V-1] ID;
+
+typedef int[0,7] REQTYPE; //Set of all types of messages
+
+// space == 0 means spacing is 5
+// space == 1 means spacing is 17
+bool space;
+
+// type of requests
+const REQTYPE JOIN_REQ=0;
+const REQTYPE JOIN_AGR=1;
+const REQTYPE JOINED_ACK=2;
+const REQTYPE LEAVE=3;
+const REQTYPE SPACING=4;
+const REQTYPE SET_SPACE=5;
+const REQTYPE STEERING=6;
+const REQTYPE LEFT_ACK=7;
+
+
+const int JOIN_TIME = 60;
+//const int JOIN_BOUND_TIME = 10;
+const int CHANGE_LANE_TIME = 20;
+const int CHANGE_LANE_BOUND = 5;
+const int JOIN_DISTANCE_TIME = 10;
+const int JOIN_DISTANCE_BOUND = 5;
+const int SET_SPACE_TIME = 20;
+const int SET_SPACE_BOUND = 5;
+const int LEADER_WAITING =2;
+const int AGENT_WAITING =1;
+int[0,20] counter_to_fail=0;
+
+chan join_r[V][1], leave_r[V][1], set_spacing_from[V][1], emergency_stop[V][1], joined_suc[V][1], left_suc[V][1], switch_steering_done[V][1];
+chan join_agr_c[1][V], leave_agr_c[1][V], platoon_m_c[1][V], set_spacing_c[1][V], switch_steering[1][V], break_pl_c[1][V], drop_join_g[1][V], no_platoon_m_c[1][V];
+chan changing_lane[V][V], changed_lane[V][V], changed_failed[V][V], set_spacing_vehicle_c[V][V], set_spacing_from_vehicle[V][V];
+chan speed_auto[V][V], close_enough[V][V], speed_manual[V][V], steering_auto[V][V], steering_manual[V][V]; 
+broadcast chan start;
+
+//clock gl_ck;
+
+//int[1, V-1] platoon[V-2][2]= { {1,1}, {2,1}, {3,2}, {1,1} };
+//int[0, V-2] platoon_length= 2;
+// to find a subset of a platoon, imitating linked list strucutre
+//int[0, V-1] platoon_order[V-2]= { 0, 1, 2, 0 };
+
+
+typedef struct {
+  REQTYPE reqtype;    //type of request
+  ID sender;    // id of sender
+  ID front;     
+  int spacing;   //set spacing or acknowledge to leader about the space which is set
+  bool steering; //set or reset steering (initiated from leader)
+} REQ;
+
+REQ reqglobal;
+
+REQ empty_req(){
+    REQ r;
+    return r;
+}
+
+</declaration>
+	<template>
+		<name>agent</name>
+		<parameter>ID id, bool pl</parameter>
+		<declaration>// Place local declarations here.
+
+bool changing_lane_flag= false;
+bool changed_lane_flag=false;
+//bool space=false;
+
+clock process_time;
+
+bool inc_spacing= false;
+bool spacing_done=false;
+
+ID front=0;
+
+REQ joined_ack(){
+    REQ r;
+    r.reqtype= JOINED_ACK;
+    r.sender= id;
+    r.front= front; 
+    r.spacing= 0;
+    r.steering= false; 
+    return r;
+}
+
+REQ join_req(){
+    REQ r;
+    r.reqtype= JOIN_REQ;
+    r.sender= id;
+    if(id == 3){
+    r.front= 2; }
+    else{
+    r.front= 3;
+    }
+    return r;
+}
+
+REQ left_ack(){
+    REQ r;
+    r.reqtype= LEFT_ACK;
+    r.sender= id;
+    return r;
+}
+
+REQ leave_req(){
+    REQ r;
+    r.reqtype= LEAVE;
+    r.sender= id;
+    return r;
+}
+
+</declaration>
+		<location id="id0" x="-688" y="0">
+			<committed/>
+		</location>
+		<location id="id1" x="68" y="119">
+			<committed/>
+		</location>
+		<location id="id2" x="68" y="229">
+			<committed/>
+		</location>
+		<location id="id3" x="-153" y="-195">
+			<committed/>
+		</location>
+		<location id="id4" x="-756" y="-416">
+			<committed/>
+		</location>
+		<location id="id5" x="-790" y="-348">
+		</location>
+		<location id="id6" x="-399" y="-110">
+			<name x="-425" y="-144">failed_to_leave</name>
+			<committed/>
+		</location>
+		<location id="id7" x="-407" y="-450">
+			<name x="-441" y="-433">failed_to_join</name>
+			<committed/>
+		</location>
+		<location id="id8" x="-93" y="-51">
+			<committed/>
+		</location>
+		<location id="id9" x="51" y="25">
+			<label kind="invariant" x="-263" y="8">process_time&lt;= SET_SPACE_TIME+ 
+SET_SPACE_BOUND+ CHANGE_LANE_TIME 
++ CHANGE_LANE_BOUND+ AGENT_WAITING</label>
+		</location>
+		<location id="id10" x="-399" y="-51">
+			<name x="-408" y="-76">leave_completed</name>
+			<committed/>
+		</location>
+		<location id="id11" x="-416" y="170">
+		</location>
+		<location id="id12" x="-416" y="85">
+			<committed/>
+		</location>
+		<location id="id13" x="-433" y="-246">
+			<name x="-425" y="-246">join_completed</name>
+			<committed/>
+		</location>
+		<location id="id14" x="-68" y="-195">
+		</location>
+		<location id="id15" x="-255" y="-195">
+			<committed/>
+		</location>
+		<location id="id16" x="59" y="-195">
+			<committed/>
+		</location>
+		<location id="id17" x="8" y="-450">
+			<label kind="invariant" x="-280" y="-433">process_time&lt;= SET_SPACE_TIME+ 
+SET_SPACE_BOUND+CHANGE_LANE_TIME+
+CHANGE_LANE_BOUND+AGENT_WAITING</label>
+		</location>
+		<location id="id18" x="-790" y="-170">
+			<committed/>
+		</location>
+		<location id="id19" x="-187" y="-51">
+		</location>
+		<location id="id20" x="-433" y="-195">
+		</location>
+		<location id="id21" x="-790" y="-255">
+			<committed/>
+		</location>
+		<location id="id22" x="-51" y="229">
+			<committed/>
+		</location>
+		<location id="id23" x="-221" y="229">
+		</location>
+		<location id="id24" x="-416" y="229">
+			<committed/>
+		</location>
+		<location id="id25" x="-416" y="42">
+			<name x="-399" y="25">waiting_for_l_agr</name>
+		</location>
+		<location id="id26" x="-17" y="-297">
+			<name x="-102" y="-322">rdy_ch_lane</name>
+			<committed/>
+		</location>
+		<location id="id27" x="-272" y="-297">
+			<name x="-349" y="-331">waiting_for_j_agr</name>
+		</location>
+		<location id="id28" x="-552" y="-195">
+		</location>
+		<init ref="id28"/>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-781" y="-136">steering_auto[id][id]!</label>
+			<nail x="-790" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="-765" y="-93">switch_steering_done[id][0]!</label>
+			<nail x="-628" y="-93"/>
+		</transition>
+		<transition>
+			<source ref="id18"/>
+			<target ref="id0"/>
+			<label kind="synchronisation" x="-781" y="-153">steering_manual[id][id]!</label>
+			<nail x="-773" y="-17"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id19"/>
+			<label kind="synchronisation" x="-187" y="-34">left_suc[id][0]!</label>
+		</transition>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id9"/>
+			<label kind="synchronisation" x="-93" y="68">changing_lane[id][id]!</label>
+		</transition>
+		<transition>
+			<source ref="id22"/>
+			<target ref="id2"/>
+			<label kind="synchronisation" x="-85" y="195">speed_manual[id][id]!</label>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-102" y="153">steering_manual[id][id]!</label>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id15"/>
+			<label kind="synchronisation" x="-280" y="-178">steering_auto[id][id]!</label>
+		</transition>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-178" y="-221">close_enough[id][id]?</label>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id28"/>
+			<label kind="synchronisation" x="-731" y="-459">set_spacing_from[id][0]!</label>
+			<nail x="-612" y="-416"/>
+		</transition>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="synchronisation" x="-782" y="-408">set_spacing_from_vehicle[id][id]?</label>
+			<label kind="assignment" x="-782" y="-374">spacing_done=true</label>
+			<nail x="-790" y="-416"/>
+		</transition>
+		<transition>
+			<source ref="id21"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-790" y="-331">set_spacing_vehicle_c[id][id]!</label>
+			<label kind="assignment" x="-790" y="-314">(space? (inc_spacing=true):
+(inc_spacing=false)), 
+spacing_done=false</label>
+			<nail x="-790" y="-272"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id28"/>
+			<nail x="-493" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-348" y="-127">process_time== SET_SPACE_TIME+ 
+SET_SPACE_BOUND+CHANGE_LANE_TIME+ 
+CHANGE_LANE_BOUND+AGENT_WAITING</label>
+			<nail x="85" y="-110"/>
+			<nail x="-42" y="-110"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id28"/>
+			<label kind="assignment" x="-484" y="-425">changing_lane_flag=false</label>
+			<nail x="-502" y="-400"/>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id7"/>
+			<label kind="guard" x="-382" y="-484">process_time== SET_SPACE_TIME+ 
+SET_SPACE_BOUND+CHANGE_LANE_TIME+
+CHANGE_LANE_BOUND+AGENT_WAITING</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-85" y="-76">changed_lane[id][id]?</label>
+			<nail x="34" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id28"/>
+			<nail x="-467" y="-51"/>
+		</transition>
+		<transition>
+			<source ref="id19"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-365" y="-51">no_platoon_m_c[0][id]?</label>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id24"/>
+			<label kind="synchronisation" x="-416" y="178">set_spacing_from_vehicle[id][id]?</label>
+			<label kind="assignment" x="-416" y="195">spacing_done=true</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-408" y="93">set_spacing_vehicle_c[id][id]!</label>
+			<label kind="assignment" x="-408" y="110">(space? inc_spacing=true: 
+inc_spacing=false), 
+spacing_done=false</label>
+		</transition>
+		<transition>
+			<source ref="id25"/>
+			<target ref="id12"/>
+			<label kind="synchronisation" x="-416" y="51">set_spacing_c[0][id]?</label>
+		</transition>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id28"/>
+			<nail x="-476" y="-246"/>
+		</transition>
+		<transition>
+			<source ref="id20"/>
+			<target ref="id13"/>
+			<label kind="synchronisation" x="-433" y="-229">platoon_m_c[0][id]?</label>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id14"/>
+			<label kind="synchronisation" x="-85" y="-178">speed_auto[id][id]!</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id20"/>
+			<label kind="guard" x="-399" y="-212">changed_lane_flag</label>
+			<label kind="synchronisation" x="-399" y="-195">joined_suc[id][0]!</label>
+		</transition>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="synchronisation" x="-85" y="-280">changed_lane[id][id]?</label>
+			<label kind="assignment" x="-119" y="-263">changing_lane_flag=false, 
+changed_lane_flag=true</label>
+			<nail x="59" y="-450"/>
+		</transition>
+		<transition>
+			<source ref="id26"/>
+			<target ref="id17"/>
+			<label kind="synchronisation" x="-187" y="-374">changing_lane[id][id]!</label>
+			<label kind="assignment" x="-212" y="-357">changing_lane_flag= true, 
+changed_lane_flag= false</label>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id18"/>
+			<label kind="synchronisation" x="-765" y="-195">switch_steering[0][id]?</label>
+			<nail x="-773" y="-195"/>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id21"/>
+			<label kind="synchronisation" x="-773" y="-255">set_spacing_c[0][id]?</label>
+			<nail x="-637" y="-255"/>
+		</transition>
+		<transition>
+			<source ref="id23"/>
+			<target ref="id22"/>
+			<label kind="synchronisation" x="-204" y="229">leave_agr_c[0][id]?</label>
+		</transition>
+		<transition>
+			<source ref="id24"/>
+			<target ref="id23"/>
+			<label kind="synchronisation" x="-399" y="229">set_spacing_from[id][0]!</label>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id25"/>
+			<label kind="synchronisation" x="-459" y="-34">leave_r[id][0]!</label>
+			<label kind="assignment" x="-450" y="-17">reqglobal= leave_req(),
+process_time=0</label>
+			<nail x="-442" y="42"/>
+		</transition>
+		<transition>
+			<source ref="id27"/>
+			<target ref="id26"/>
+			<label kind="synchronisation" x="-238" y="-314">join_agr_c[0][id]?</label>
+			<label kind="assignment" x="-255" y="-297">changed_lane_flag = false</label>
+		</transition>
+		<transition>
+			<source ref="id28"/>
+			<target ref="id27"/>
+			<label kind="synchronisation" x="-450" y="-331">join_r[id][0]!</label>
+			<label kind="assignment" x="-459" y="-314">reqglobal= join_req(),
+process_time = 0</label>
+			<nail x="-459" y="-297"/>
+		</transition>
+	</template>
+	<template>
+		<name>vehicle</name>
+		<parameter>ID id</parameter>
+		<declaration>
+clock timer;
+</declaration>
+		<location id="id29" x="-348" y="-314">
+			<committed/>
+		</location>
+		<location id="id30" x="-850" y="-263">
+			<label kind="invariant" x="-1224" y="-255">timer&lt;= SET_SPACE_TIME+ SET_SPACE_BOUND</label>
+		</location>
+		<location id="id31" x="-850" y="-144">
+			<label kind="invariant" x="-1249" y="-136">timer&lt;= JOIN_DISTANCE_TIME+ JOIN_DISTANCE_BOUND</label>
+		</location>
+		<location id="id32" x="-195" y="-144">
+			<label kind="invariant" x="-187" y="-136">timer&lt;= CHANGE_LANE_TIME+ CHANGE_LANE_BOUND</label>
+		</location>
+		<location id="id33" x="-510" y="-144">
+		</location>
+		<init ref="id33"/>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="-467" y="-433">steering_auto[id][id]?</label>
+			<nail x="-467" y="-416"/>
+			<nail x="-331" y="-416"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="-467" y="-399">speed_manual[id][id]?</label>
+			<nail x="-467" y="-374"/>
+			<nail x="-348" y="-374"/>
+		</transition>
+		<transition>
+			<source ref="id29"/>
+			<target ref="id33"/>
+			<nail x="-348" y="-263"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id29"/>
+			<label kind="synchronisation" x="-467" y="-348">steering_manual[id][id]?</label>
+			<nail x="-459" y="-314"/>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-493" y="-25">timer== CHANGE_LANE_TIME+ CHANGE_LANE_BOUND</label>
+			<nail x="-170" y="0"/>
+			<nail x="-510" y="0"/>
+		</transition>
+		<transition>
+			<source ref="id30"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-832" y="-297">timer&gt;= SET_SPACE_TIME - SET_SPACE_BOUND</label>
+			<label kind="synchronisation" x="-832" y="-280">set_spacing_from_vehicle[id][id]!</label>
+			<nail x="-493" y="-263"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id30"/>
+			<label kind="synchronisation" x="-832" y="-204">set_spacing_vehicle_c[id][id]?</label>
+			<label kind="assignment" x="-832" y="-187">timer=0</label>
+			<nail x="-510" y="-187"/>
+			<nail x="-850" y="-187"/>
+		</transition>
+		<transition>
+			<source ref="id31"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-926" y="-93">timer&gt;= JOIN_DISTANCE_TIME - JOIN_DISTANCE_BOUND</label>
+			<label kind="synchronisation" x="-799" y="-68">close_enough[id][id]!</label>
+			<nail x="-850" y="-68"/>
+			<nail x="-527" y="-68"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id31"/>
+			<label kind="synchronisation" x="-832" y="-161">speed_auto[id][id]?</label>
+			<label kind="assignment" x="-832" y="-144">timer=0</label>
+		</transition>
+		<transition>
+			<source ref="id32"/>
+			<target ref="id33"/>
+			<label kind="guard" x="-501" y="-102">timer&gt;= CHANGE_LANE_TIME - CHANGE_LANE_BOUND &amp;&amp; 
+timer&lt; CHANGE_LANE_TIME + CHANGE_LANE_BOUND</label>
+			<label kind="synchronisation" x="-450" y="-68">changed_lane[id][id]!</label>
+			<nail x="-195" y="-68"/>
+			<nail x="-501" y="-68"/>
+		</transition>
+		<transition>
+			<source ref="id33"/>
+			<target ref="id32"/>
+			<label kind="synchronisation" x="-442" y="-161">changing_lane[id][id]?</label>
+			<label kind="assignment" x="-442" y="-144">timer=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>leader</name>
+		<declaration>
+//int[0, 20] buffersize=0;
+//bool allowed_to_join= true;
+REQ leaving_vehicle;
+REQ joining_vehicle;
+
+clock timer;
+
+bool fail_leaving;
+
+ID back_vehicle=0;
+
+const int[1,10] max_try_set_spacing=1;
+int[0,max_try_set_spacing] space_counter=0;
+
+const int[1, V-1] max_length = 4;
+
+ID triggered_breaking=1;
+
+void update_back_vehicle(ID i){
+    if(i==2){back_vehicle=3;}
+    if(i==3){back_vehicle=4;}
+    if(i==4){back_vehicle=2;}
+}</declaration>
+		<location id="id34" x="-901" y="161">
+		</location>
+		<location id="id35" x="-1139" y="-246">
+			<label kind="invariant" x="-1488" y="-263">timer&lt;= SET_SPACE_TIME + SET_SPACE_BOUND</label>
+		</location>
+		<location id="id36" x="-1140" y="-178">
+			<name x="-1130" y="-170">failed_to_join</name>
+			<committed/>
+		</location>
+		<location id="id37" x="-1351" y="161">
+			<name x="-1462" y="161">failed_to_leave</name>
+			<committed/>
+		</location>
+		<location id="id38" x="-977" y="238">
+			<committed/>
+		</location>
+		<location id="id39" x="-1283" y="238">
+		</location>
+		<location id="id40" x="-1844" y="85">
+			<committed/>
+		</location>
+		<location id="id41" x="-1615" y="85">
+		</location>
+		<location id="id42" x="-1827" y="0">
+			<committed/>
+		</location>
+		<location id="id43" x="-1436" y="17">
+			<committed/>
+		</location>
+		<location id="id44" x="-1717" y="0">
+			<label kind="invariant" x="-1776" y="17">timer&lt;= SET_SPACE_TIME + SET_SPACE_BOUND</label>
+		</location>
+		<location id="id45" x="-1547" y="238">
+			<committed/>
+		</location>
+		<location id="id46" x="-1139" y="17">
+			<label kind="invariant" x="-1122" y="8">timer&lt;= SET_SPACE_TIME + SET_SPACE_BOUND</label>
+		</location>
+		<location id="id47" x="-1844" y="238">
+			<name x="-1835" y="247">leave_agreement</name>
+		</location>
+		<location id="id48" x="-1445" y="85">
+			<committed/>
+		</location>
+		<location id="id49" x="-1309" y="85">
+			<label kind="invariant" x="-1419" y="102">timer&lt;= SET_SPACE_TIME + SET_SPACE_BOUND</label>
+		</location>
+		<location id="id50" x="-1717" y="-110">
+			<name x="-1717" y="-102">join_ack</name>
+			<committed/>
+		</location>
+		<location id="id51" x="-1054" y="85">
+			<committed/>
+		</location>
+		<location id="id52" x="-1436" y="-110">
+			<name x="-1428" y="-102">join_agreement</name>
+		</location>
+		<location id="id53" x="-1139" y="-110">
+			<committed/>
+		</location>
+		<location id="id54" x="-816" y="-110">
+			<name x="-858" y="-110">idle</name>
+		</location>
+		<init ref="id54"/>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id54"/>
+			<label kind="guard" x="-850" y="238">fail_leaving</label>
+			<nail x="-943" y="255"/>
+			<nail x="-748" y="255"/>
+			<nail x="-748" y="110"/>
+		</transition>
+		<transition>
+			<source ref="id34"/>
+			<target ref="id45"/>
+			<label kind="guard" x="-1249" y="161">timer&gt;= SET_SPACE_TIME - SET_SPACE_BOUND</label>
+			<label kind="synchronisation" x="-1232" y="178">set_spacing_from[leaving_vehicle.sender][0]?</label>
+			<nail x="-901" y="195"/>
+			<nail x="-1547" y="195"/>
+		</transition>
+		<transition>
+			<source ref="id37"/>
+			<target ref="id34"/>
+			<label kind="synchronisation" x="-1343" y="127">set_spacing_c[0][leaving_vehicle.sender]!</label>
+			<label kind="assignment" x="-1326" y="144">timer=0, space=0</label>
+		</transition>
+		<transition>
+			<source ref="id35"/>
+			<target ref="id54"/>
+			<label kind="guard" x="-1190" y="-297">timer&gt;= SET_SPACE_TIME - SET_SPACE_BOUND</label>
+			<label kind="synchronisation" x="-1164" y="-280">set_spacing_from[joining_vehicle.front][0]?</label>
+			<nail x="-867" y="-246"/>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id35"/>
+			<label kind="guard" x="-1317" y="-229">joining_vehicle.front!=0</label>
+			<label kind="synchronisation" x="-1334" y="-212">set_spacing_c[0][joining_vehicle.front]!</label>
+			<label kind="assignment" x="-1215" y="-195">timer=0, space=0</label>
+		</transition>
+		<transition>
+			<source ref="id36"/>
+			<target ref="id54"/>
+			<label kind="guard" x="-1079" y="-195">joining_vehicle.front==0</label>
+			<nail x="-851" y="-178"/>
+		</transition>
+		<transition>
+			<source ref="id52"/>
+			<target ref="id36"/>
+			<label kind="guard" x="-1691" y="-212">timer &gt;= SET_SPACE_TIME+ SET_SPACE_BOUND + 
+CHANGE_LANE_TIME+ CHANGE_LANE_BOUND+
+ JOIN_DISTANCE_TIME+JOIN_DISTANCE_BOUND+LEADER_WAITING</label>
+			<nail x="-1436" y="-178"/>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id37"/>
+			<label kind="guard" x="-1802" y="161">timer &gt;= SET_SPACE_TIME+ SET_SPACE_BOUND+ 
+CHANGE_LANE_TIME+ CHANGE_LANE_BOUND + LEADER_WAITING</label>
+			<label kind="assignment" x="-1785" y="195">fail_leaving=true</label>
+			<nail x="-1802" y="161"/>
+		</transition>
+		<transition>
+			<source ref="id38"/>
+			<target ref="id54"/>
+			<label kind="synchronisation" x="-1045" y="255">no_platoon_m_c[0][leaving_vehicle.sender]!</label>
+			<nail x="-756" y="238"/>
+			<nail x="-756" y="110"/>
+		</transition>
+		<transition>
+			<source ref="id39"/>
+			<target ref="id38"/>
+			<label kind="synchronisation" x="-1266" y="238">switch_steering_done[back_vehicle][0]?</label>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id39"/>
+			<label kind="guard" x="-1479" y="221">back_vehicle!= 0</label>
+			<label kind="synchronisation" x="-1521" y="238">switch_steering[0][back_vehicle]!</label>
+		</transition>
+		<transition>
+			<source ref="id40"/>
+			<target ref="id47"/>
+			<label kind="synchronisation" x="-1844" y="102">leave_agr_c[0][leaving_vehicle.sender]!</label>
+		</transition>
+		<transition>
+			<source ref="id41"/>
+			<target ref="id40"/>
+			<label kind="synchronisation" x="-1853" y="59">switch_steering_done[back_vehicle][0]?</label>
+		</transition>
+		<transition>
+			<source ref="id48"/>
+			<target ref="id41"/>
+			<label kind="guard" x="-1581" y="68">back_vehicle!=0</label>
+			<label kind="synchronisation" x="-1657" y="34">switch_steering[0][back_vehicle]!</label>
+		</transition>
+		<transition>
+			<source ref="id42"/>
+			<target ref="id54"/>
+			<label kind="synchronisation" x="-1827" y="-340">platoon_m_c[0][joining_vehicle.sender]!</label>
+			<label kind="assignment" x="-1819" y="-323">joining_vehicle= empty_req()</label>
+			<nail x="-1827" y="-323"/>
+			<nail x="-850" y="-323"/>
+		</transition>
+		<transition>
+			<source ref="id44"/>
+			<target ref="id42"/>
+			<label kind="guard" x="-1819" y="-42">timer&gt;= SET_SPACE_TIME - SET_SPACE_BOUND</label>
+			<label kind="synchronisation" x="-1819" y="-25">set_spacing_from[joining_vehicle.front][0]?</label>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id52"/>
+			<label kind="guard" x="-1419" y="-144">joining_vehicle.front==0</label>
+			<label kind="synchronisation" x="-1418" y="-127">join_agr_c[0][joining_vehicle.sender]!</label>
+		</transition>
+		<transition>
+			<source ref="id43"/>
+			<target ref="id52"/>
+			<label kind="synchronisation" x="-1436" y="-59">join_agr_c[0][joining_vehicle.sender]!</label>
+		</transition>
+		<transition>
+			<source ref="id46"/>
+			<target ref="id43"/>
+			<label kind="guard" x="-1445" y="-25">timer&gt;= SET_SPACE_TIME - SET_SPACE_BOUND</label>
+			<label kind="synchronisation" x="-1428" y="-8">set_spacing_from[joining_vehicle.front][0]?</label>
+		</transition>
+		<transition>
+			<source ref="id50"/>
+			<target ref="id44"/>
+			<label kind="guard" x="-1717" y="-85">joining_vehicle.front!=0</label>
+			<label kind="synchronisation" x="-1717" y="-68">set_spacing_c[0][joining_vehicle.front]!</label>
+			<label kind="assignment" x="-1717" y="-55">timer=0, space=0</label>
+		</transition>
+		<transition>
+			<source ref="id45"/>
+			<target ref="id54"/>
+			<label kind="guard" x="-901" y="195">back_vehicle==0</label>
+			<label kind="synchronisation" x="-1062" y="212">no_platoon_m_c[0][leaving_vehicle.sender]!</label>
+			<nail x="-1453" y="212"/>
+			<nail x="-782" y="212"/>
+		</transition>
+		<transition>
+			<source ref="id47"/>
+			<target ref="id45"/>
+			<label kind="synchronisation" x="-1810" y="221">left_suc[leaving_vehicle.sender][0]?</label>
+		</transition>
+		<transition>
+			<source ref="id48"/>
+			<target ref="id47"/>
+			<label kind="guard" x="-1776" y="119">back_vehicle==0</label>
+			<label kind="synchronisation" x="-1776" y="136">leave_agr_c[0][leaving_vehicle.sender]!</label>
+			<nail x="-1445" y="136"/>
+			<nail x="-1827" y="136"/>
+		</transition>
+		<transition>
+			<source ref="id53"/>
+			<target ref="id46"/>
+			<label kind="guard" x="-1139" y="-68">joining_vehicle.front!= 0</label>
+			<label kind="synchronisation" x="-1139" y="-51">set_spacing_c[0][joining_vehicle.front]!</label>
+			<label kind="assignment" x="-1139" y="-34">timer=0, space=1</label>
+		</transition>
+		<transition>
+			<source ref="id49"/>
+			<target ref="id48"/>
+			<label kind="guard" x="-1428" y="34">timer&gt;= SET_SPACE_TIME - SET_SPACE_BOUND</label>
+			<label kind="synchronisation" x="-1470" y="51">set_spacing_from[leaving_vehicle.sender][0]?</label>
+		</transition>
+		<transition>
+			<source ref="id51"/>
+			<target ref="id49"/>
+			<label kind="synchronisation" x="-1292" y="68">set_spacing_c[0][leaving_vehicle.sender]!</label>
+			<label kind="assignment" x="-1215" y="85">timer=0, space=1</label>
+		</transition>
+		<transition>
+			<source ref="id50"/>
+			<target ref="id54"/>
+			<label kind="guard" x="-1530" y="-323">joining_vehicle.front==0</label>
+			<label kind="synchronisation" x="-1343" y="-323">platoon_m_c[0][joining_vehicle.sender]!</label>
+			<label kind="assignment" x="-1054" y="-323">joining_vehicle= empty_req()</label>
+			<nail x="-1717" y="-306"/>
+			<nail x="-858" y="-306"/>
+		</transition>
+		<transition>
+			<source ref="id52"/>
+			<target ref="id50"/>
+			<label kind="synchronisation" x="-1708" y="-136">joined_suc[joining_vehicle.sender][0]?</label>
+		</transition>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id51"/>
+			<label kind="select" x="-943" y="59">i : ID</label>
+			<label kind="synchronisation" x="-969" y="68">leave_r[i][0]?</label>
+			<label kind="assignment" x="-1011" y="85">leaving_vehicle= reqglobal,
+update_back_vehicle(i),
+fail_leaving=false</label>
+			<nail x="-816" y="85"/>
+		</transition>
+		<transition>
+			<source ref="id54"/>
+			<target ref="id53"/>
+			<label kind="select" x="-1011" y="-144">i: ID</label>
+			<label kind="synchronisation" x="-1028" y="-127">join_r[i][0]?</label>
+			<label kind="assignment" x="-1088" y="-110">joining_vehicle= reqglobal,
+timer=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>initialisation</name>
+		<location id="id55" x="-391" y="-170">
+		</location>
+		<location id="id56" x="-467" y="-170">
+			<committed/>
+		</location>
+		<init ref="id56"/>
+		<transition>
+			<source ref="id56"/>
+			<target ref="id55"/>
+			<label kind="synchronisation" x="-449" y="-187">start!</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+
+//v2 = vehicle(2, true);
+v2= vehicle(2);
+a2 = agent(2,true);
+v3= vehicle(3);
+a3 = agent(3,true);
+v4= vehicle(4);
+a4 = agent(4,false);
+//trigger = initialisation();
+
+//v5= random_vehicle(5, true);
+//a5= agent(5,false);
+//v6= random_vehicle(6, false);
+//a6= agent(6, false);
+
+
+
+l = leader();
+
+// List one or more processes to be composed into a system.
+system v2, a2, v3, a3, v4, a4, l;
+  
+
+  </system>
+	<queries>
+		<query>
+			<formula>A[] a2.leave_completed imply (a2.process_time&gt;=30 &amp;&amp; a2.process_time&lt;50)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] a2.join_completed imply (a2.process_time&gt;=50 &amp;&amp; a2.process_time&lt;90)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] l.failed_to_join imply l.timer &gt;= 67
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] (a2.join_completed &amp;&amp; l.joining_vehicle.front ==3) imply (!a3.inc_spacing &amp;&amp; a3.spacing_done)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>(a2.waiting_for_j_agr &amp;&amp; l.joining_vehicle.front==3) --&gt; (a3.inc_spacing &amp;&amp; a3.spacing_done)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] (a2.rdy_ch_lane &amp;&amp; l.joining_vehicle.front==3) imply (a3.inc_spacing &amp;&amp; a3.spacing_done)
+			</formula>
+			<comment>
+			</comment>
+		</query>
+		<query>
+			<formula>A[] not deadlock
+			</formula>
+			<comment>satisfied if assume all vehicles are fault free
+			</comment>
+		</query>
+	</queries>
+</nta>
