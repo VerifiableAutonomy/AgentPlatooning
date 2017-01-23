@@ -1,0 +1,29 @@
+
+env = eass.platooning.PlatoonEnvironment
+
+mas.agent.1.file= /src/examples/eass/Platooning/platoon_scenario4_follower.eass
+mas.agent.1.builder= eass.EASSAgentBuilder
+mas.agent.1.name= follower1
+mas.agent.2.file= /src/examples/eass/Platooning/platoon_scenario4_abstraction_follower.eass
+mas.agent.2.builder= eass.EASSAgentBuilder
+mas.agent.2.name= abstraction_follower1
+
+mas.agent.3.file= /src/examples/eass/Platooning/platoon_scenario4_follower.eass
+mas.agent.3.builder= eass.EASSAgentBuilder
+mas.agent.3.name= follower2
+mas.agent.4.file= /src/examples/eass/Platooning/platoon_scenario4_abstraction_follower.eass
+mas.agent.4.builder= eass.EASSAgentBuilder
+mas.agent.4.name= abstraction_follower2
+
+mas.agent.5.file= /src/examples/eass/Platooning/platoon_scenario4_follower.eass
+mas.agent.5.builder= eass.EASSAgentBuilder
+mas.agent.5.name= follower3
+mas.agent.6.file= /src/examples/eass/Platooning/platoon_scenario4_abstraction_follower.eass
+mas.agent.6.builder= eass.EASSAgentBuilder
+mas.agent.6.name= abstraction_follower3
+
+log.warning = ajpf.MCAPLAgent,ajpf.MCAPLcontroller
+log.info = eass.mas.DefaultEnvironment
+log.format = brief
+//log.fine = ail.semantics.AILAgent
+//log.fine = ail.syntax.EvaluationAndRuleBaseIterator

@@ -1,0 +1,89 @@
+
+/*
+	Platooning Scenario 3 FOLLOWER AGENT
+
+	Recoverable latency problems. All vehicles have REs + leader RE. vehicles adapt spacing parameters based on latency problems
+	An example of recoverable latency problem: if the difference between the time stamp on a message and the vehicle's clock is too great then the spacing should be double.
+	In this scenario, we are interested to know what is the platoon tolerance to latency. How far we can get the platoon together. 
+	How far can vehicles be from each other in order to still keep platoon. REs in vehicles independently decide about changing their spacing parameters and RE in leader decides 
+	how spacing parameter can grow. For instance, if two vehicles are too-far, then the leader should not allow more increase of space between those two vehicles otherwise the platoon 
+	breaks to parts that is described in Scenario 4.  
+
+	For recoverable latency problem, we can verify that too-far state (defined for this particular control strategy) is not reachable.
+
+
+	Assumption: all vehicles are members of platoon at the beginning
+
+*/
+
+
+:abstraction: follower
+
+:Initial Beliefs:
+
+next_latency(0,1)
+next_latency(1,2)
+next_latency(2,3)
+next_latency(3,4)
+
+spacing(0,5)
+spacing(1,10)
+
+lb_latency(0.04)
+ub_latecny(0.08)
+
+platoon_set_up_time(70)
+
+check_latency_time(100)
+check_latency_clean_up_time(102)
+
+:Initial Goals:
+
+:Plans:
+
+/* Default plans for handling messages */
++.received(:tell, B): {True} <- +B;   
++.received(:perform, G): {True} <- +!G [perform];
++.received(:achieve, G): {True} <- +!G [achieve];
+
+
++timeStamp(X): {~B platoon_set_up, B platoon_set_up_time(Y), Y < X}<- assert_shared(platoon_set_up), print(platoonSetUp);
++timeStamp(X): {~B check_latency, B check_latency_time(Y), Y < X}<- print(checkLatencyStarted), assert_shared(check_latency), -leaderLatency(Y);
++timeStamp(X): {B check_latency, B check_latency_clean_up_time(K), K < X, B leaderLatency(Y)}<- -leaderLatency(Y);
+
+//+leaderLatency(X): {B check_latency, ~B unrecoverable}<- print(X);
+
++leaderLatency(X): {B check_latency, B lb_latency(Y), X < Y, ~B unrecoverable, ~B latency(0), ~B latency(1) }<- 
+					print(latency0), assert_shared(latency(0));
++leaderLatency(X): {B check_latency, B lb_latency(Y), X < Y, ~B unrecoverable, ~B latency(0), B latency(1) }<- 
+					print(latency0), remove_shared(latency(1)), assert_shared(latency(0));
++leaderLatency(X): {B check_latency, B lb_latency(Y), Y < X, B ub_latecny(Z), X < Z, 
+						 ~B unrecoverable, ~B latency(1), ~B latency(0) }<- print(latency1), assert_shared(latency(1));
++leaderLatency(X): {B check_latency, B lb_latency(Y), Y < X, B ub_latecny(Z), X < Z, 
+						 ~B unrecoverable, ~B latency(1), B latency(0) }<- print(latency1), remove_shared(latency(0)), assert_shared(latency(1));
+
++leaderLatency(X): {B check_latency, B ub_latecny(Z), Z < X, ~B unrecoverable, ~B latency(K)}
+					   <- assert_shared(unrecoverable);
++leaderLatency(X): {B check_latency, B ub_latecny(Z), Z < X, ~B unrecoverable, B latency(K)}
+					   <- remove_shared(latency(K)), assert_shared(unrecoverable);
+
++distance(X): {B check_latency, ~B unrecoverable, X < 4, B nominal_space, B double_nominal_space}<- remove_shared(nominal_space), remove_shared(double_nominal_space), print(less_than_nominal), print(X);
++distance(X): {B check_latency, ~B unrecoverable, X < 4, B nominal_space}<- remove_shared(nominal_space), print(less_than_nominal);
++distance(X): {B check_latency, ~B unrecoverable, X < 4, B double_nominal_space}<- remove_shared(double_nominal_space), print(less_than_nominal);
+
++distance(X): {B check_latency, ~B unrecoverable, 4 < X, X < 5.5, ~B nominal_space }<- remove_shared(double_nominal_space), assert_shared(nominal_space);
+
++distance(X): {B check_latency, ~B unrecoverable, 6 < X , X < 9, B nominal_space, B double_nominal_space}<- remove_shared(double_nominal_space), remove_shared(nominal_space);
++distance(X): {B check_latency, ~B unrecoverable, 6 < X , X < 9, B nominal_space}<- remove_shared(nominal_space);
++distance(X): {B check_latency, ~B unrecoverable, 6 < X , X < 9, B double_nominal_space}<- remove_shared(double_nominal_space);
+
++distance(X): {B check_latency, ~B unrecoverable, 9 < X, X < 11, ~B double_nominal_space}<- remove_shared(nominal_space), assert_shared(double_nominal_space);
+
++distance(X): {B check_latency, ~B unrecoverable,  11 < X,  B nominal_space, B double_nominal_space}<- remove_shared(double_nominal_space), remove_shared(nominal_space), print(greater_than_double), print(X);
++distance(X): {B check_latency, ~B unrecoverable,  11 < X,  B nominal_space}<- remove_shared(nominal_space), print(greater_than_double);
++distance(X): {B check_latency, ~B unrecoverable,  11 < X,  B double_nominal_space}<- remove_shared(double_nominal_space), print(greater_than_double);
+
++!breaking_platoon [perform]: {True}<- run(pred(breaking_platoon), args(0));
++!adjust_distance_parameter(X) [perform]: {B spacing(X,Y)}<- run(pred(set_spacing),args(Y));
++!speed_controller(X) [perform]: {True}<- run(pred(speed_controller),args(X)), print(speedControllerEnabled);
++!steering_controller(X)[perform]: {True}<- run(pred(steering_controller), args(X)), print(steeringControllerEnabled);

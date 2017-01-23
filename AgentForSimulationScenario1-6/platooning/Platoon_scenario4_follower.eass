@@ -1,0 +1,42 @@
+
+/*
+	Platooning Scenario 4  FOLLOWER AGENT
+
+	unecoverable latency problems. 
+	
+*/
+
+
+:name: follower
+
+:Initial Beliefs:
+
+:Initial Goals:
+
+
+
+:Plans:
+
+/* Default plans for handling messages */
++.received(:tell, B): {True} <- +B;   
++.received(:perform, G): {True} <- +!G [perform];
++.received(:achieve, G): {True} <- +!G [achieve];
+
+//initialisation phase-- vehicle joins to platoon after 50 sec
++platoon_set_up: {True}<- perf(speed_controller(1)), perf(steering_controller(1));
+
+// check for latency 0 and 1 to add goals to set spacing to 5 and 10, accordingly
++latency(0): {~G nominal_space [achieve], ~G double_nominal_space [achieve]}<- +!nominal_space [achieve];
++latency(0): {G double_nominal_space [achieve]}<- -!double_nominal_space [achieve], +!nominal_space [achieve];
++latency(1): {~G double_nominal_space [achieve], ~G nominal_space [achieve]}<- +!double_nominal_space [achieve];
++latency(1): {G nominal_space [achieve]}<- -!nominal_space [achieve], +!double_nominal_space [achieve];
++latency(K): {True}<- print(K);
+
+// goal to set spacing to nominal (5)
++!nominal_space [achieve]: {True}<- perf(adjust_distance_parameter(0)), *nominal_space;
+
+// goal to set spacing to double nominal (10)
++!double_nominal_space [achieve]: {True}<- perf(adjust_distance_parameter(1)), *double_nominal_space;
+
+// if unrecoverable latency occurs, all goals are dropped and breaking_platoon action should be taken (assume it doesnt happen in this scenario)
++unrecoverable: {True}<- -!nominal_space [achieve], -!double_nominal_space [achieve], perf(speed_controller(0)), perf(steering_controller(0));

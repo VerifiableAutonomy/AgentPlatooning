@@ -1,0 +1,51 @@
+:abstraction: follower
+
+:Initial Beliefs:
+	
+init_max_dist(20) // maximum initial distance to switch to steering control
+set_up_time(60)
+time_to_join(100)
+time_to_leave(150)
+
+:Initial Goals:
+
+:Plans:
+	
+	/* Default plans for handling messages */
+	+.received(:tell, B): {True} <- +B;   
+	+.received(:perform, G): {True} <- +!G [perform];
+	+.received(:achieve, G): {True} <- +!G [achieve];
+
++id(X,Y,Z): {True}<- assert_shared(name(X)), assert_shared(id(Y)), assert_shared(preceding(Z));
+
++j_pos(X,Y): {True}<- assert_shared(name_front(X)), assert_shared(id_front(Y));
+
++timeStamp(X): {~B id(3), B set_up_time(Y), Y <X, ~B platoon_set_up, B name(NAME), B preceding(PREC)}<- assert_shared(platoon_set_up(NAME,PREC));
+
++timeStamp(X): {B id(3), B time_to_join(Y), Y < X, X < Y+20, ~B ready_to_join}<- assert_shared(ready_to_join); 
+
++timeStamp(X): {B time_to_leave(Y), Y-10 < X, ~B reset_spacing, B spacing(K), B spacing}<- remove_shared(spacing(K)), remove_shared(spacing);
+
++timeStamp(X): {B time_to_leave(Y), Y-10 < X, ~B reset_spacing, ~B spacing(K), ~B spacing}<- assert_shared(reset_spacing);																
+
++timeStamp(X): {B id(3), B time_to_leave(Y), Y < X, ~B ready_to_leave}<-  remove_shared(ready_to_join), remove_shared(spacing(K)), remove_shared(spacing), assert_shared(ready_to_leave); 
+
++distance(X): {B spacing(Y), Y-1 < X, X < Y+1}<- assert_shared(spacing);
+
++distance(X): {B changed_lane, B ready_to_join, B initial_distance, B init_max_dist(Y), Y < X }<- remove_shared(initial_distance); // if vehicle's distance is less than maximum initial distance, we add "initial_distance" belief
+
++distance(X): {B changed_lane, B ready_to_join, ~B initial_distance, B init_max_dist(Y), X < Y }<- assert_shared(initial_distance); // if vehicle's distance is greater than maximum initial distance, we remove "initial_distance" belief
+
++lateral(X): {B changing_lane, B id(3), X < 1} <- assert_shared(changed_lane);  
+
++lateral(X): {B changing_lane, B id(3), 1 < X} <- remove_shared(changed_lane);  
+
++!join_ok(X) [perform]: {True}<- run(pred(join_ok),args(X)), assert_shared(changing_lane);
+
++!speed_controller(X) [perform]: {True}<- run(pred(speed_controller),args(X)), print(speedControllerSwitched);
+
++!steering_controller(X)[perform]: {True}<- run(pred(steering_controller), args(X)), print(steeringControllerSwitched);
+
++!set_spacing(Y) [perform]: {True}<- run(pred(set_spacing),args(Y)), remove_shared(spacing), assert_shared(spacing(Y));
+
++!join_position(X) [perform]: {True}<- run(pred(join_position),args(X)), print(sent_join_position);

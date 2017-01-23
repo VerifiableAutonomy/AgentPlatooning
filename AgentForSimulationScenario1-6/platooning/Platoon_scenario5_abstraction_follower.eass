@@ -1,0 +1,39 @@
+
+/*
+	Platooning Scenario 5 FOLLOWER AGENT
+
+	power loss in follower 1, breaking platoon 
+*/
+
+
+:abstraction: follower
+
+:Initial Beliefs:
+
+platoon_set_up_time(70)
+
+stop_signal(150)
+
+:Initial Goals:
+
+:Plans:
+
+/* Default plans for handling messages */
++.received(:tell, B): {True} <- +B;   
++.received(:perform, G): {True} <- +!G [perform];
++.received(:achieve, G): {True} <- +!G [achieve];
+
++id(X): {True}<- assert_shared(id(X));
+
++timeStamp(X): {~B platoon_set_up, B platoon_set_up_time(Y), Y < X}<- assert_shared(platoon_set_up), print(platoonSetUp);
++timeStamp(X): {~B check_latency, B check_latency_time(Y), Y < X}<- print(checkLatencyStarted), assert_shared(check_latency), -leaderLatency(Y);
+
++distance(X): {~B zeroSpeed, B platoon_set_up, X== 0}<- assert_shared(initialStopping); 
+//+speed(X): {B initialStopping}<- print(X);
++speed(X): {B platoon_set_up, X< 1}<- assert_shared(zeroSpeed);
++distance(X): {B zeroSpeed, B initialStopping}<- assert_shared(stopedWithoutCrash);
++distance(X): {B zeroSpeed, 0 < X}<- assert_shared(stopedWithoutCrash);
+
++!speed_controller(X) [perform]: {True}<- run(pred(speed_controller),args(X)), print(speedControllerEnabled);
++!steering_controller(X)[perform]: {True}<- run(pred(steering_controller), args(X)), print(steeringControllerEnabled);
++!stop [perform]: {True}<- run(pred(stop),args(0));

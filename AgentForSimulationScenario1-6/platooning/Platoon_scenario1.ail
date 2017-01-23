@@ -1,0 +1,16 @@
+
+env = eass.platooning.PlatoonEnvironment
+
+mas.file= /src/examples/eass/platooning/platoon_scenario1.eass
+mas.builder= eass.EASSMASBuilder
+mas.name= follower1
+
+log.warning = ajpf.MCAPLAgent,ajpf.MCAPLcontroller
+log.info = eass.mas.DefaultEnvironment, 
+log.format = brief
+//log.fine= ail.semantics.AILAgent
+//log.fine= eass.platooning.PlatoonEnvironment
+
+# Eass Specific stuff
+
+connectedtomatlab = false

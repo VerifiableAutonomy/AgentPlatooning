@@ -1,0 +1,31 @@
+
+/*
+	Platooning Scenario 5  FOLLOWER AGENT
+
+	a vehicle power loss, stop vehicles and breaking platoon. 
+	
+*/
+
+
+:name: follower
+
+:Initial Beliefs:
+
+:Initial Goals:
+
+
+
+:Plans:
+
+/* Default plans for handling messages */
++.received(:tell, B): {True} <- +B;   
++.received(:perform, G): {True} <- +!G [perform];
++.received(:achieve, G): {True} <- +!G [achieve];
+
+//initialisation phase-- vehicle joins to platoon after 50 sec
++platoon_set_up: {True}<- perf(speed_controller(1)), perf(steering_controller(1));
+
++initialStopping: {B id(X)}<- .send(leader, :tell, stopping(X)), +!stopedWithoutCrash [achieve];
++stopping: {True}<- +!stopedWithoutCrash [achieve];
+
++!stopedWithoutCrash [achieve]: {True}<- perf(stop), *stopedWithoutCrash, print(StopedSuccessfully);

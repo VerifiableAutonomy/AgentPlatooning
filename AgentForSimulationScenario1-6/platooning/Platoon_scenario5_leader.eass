@@ -1,0 +1,31 @@
+
+/*
+	Platooning Scenario 5 LEADER AGENT
+
+	recieve stop from a vehicle and broadcast the stop message to the rest of vehicle
+*/
+
+
+:name: leader
+
+:Initial Beliefs:
+
+
+:Initial Goals:
+
+
+:Plans:
+
+/* Default plans for handling messages */
++.received(:tell, B): {True} <- +B;   
++.received(:perform, G): {True} <- +!G [perform];
++.received(:achieve, G): {True} <- +!G [achieve];
+
+//add initial beliefs
++platoon_m(X, Y): {True}<- remove_shared(platoon_m(X, Y )), +platoon_member(X, Y);
+
+
+
++stopping(X): {B platoon_member(X, Y)}<- .send(Y, :tell, stopping), +next(Y);
++next(Y): {B platoon_member(Y, Z)}<- .send(Z, :tell, stopping), -next(Y), +next(Z);
+

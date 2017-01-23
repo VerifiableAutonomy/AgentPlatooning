@@ -1,0 +1,11 @@
+:abstraction: leader
+
+:Initial Beliefs:
+
+:Initial Goals:
+
+:Plans:
+	
++allowed_position(X): {True}<- assert_shared(allowed_position(X));
+	
++platoon_m(X, Y): {True}<- assert_shared(platoon_m(X,Y));
