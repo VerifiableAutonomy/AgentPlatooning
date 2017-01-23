@@ -12,6 +12,7 @@ This repository contains:
 
 
 ====== running the hybrid agent-based platooning model using TORCS simulation ==========
+
 1. Checkout the following repository first 
 
 	git clone https://github.com/VerifiableAutonomy/mcapl
@@ -37,6 +38,7 @@ This repository contains:
 6. Run MCAPL (run-AIL) with scenario6.ail or any *.ail file for different scenarios in platooning
 
 ======= regenerating the verification of platooning using AJPF ===========
+
 1. Checkout the following repository for MCAPL first
 	
 	git clone https://github.com/VerifiableAutonomy/mcapl
@@ -50,6 +52,7 @@ This repository contains:
 4. Run MCAPL (run-JPF) with platoon.jpf argument 
 
 ======= regenerating the untimed automaton from agent model ===========
+
 1. Follow the same guideline for regenerating the verification of platooning using AJPF 
 	to generate the states perceptions and state transition of the agent code
 	
@@ -69,6 +72,7 @@ This repository contains:
 	c) a DOT file for generating the translated automaton in Graphviz
 
 ======= Uppaal model for platooning =============
+
 1. Checkout this repository 
 
 	git clone https://github.com/VerifiableAutonomy/AgentPlatooning
@@ -76,9 +80,11 @@ This repository contains:
 2. Open the Uppaal model from UppaalPlatooningModel folder
 
 ======= links to realhardware test demo =========
+
 1. http://wordpress.csc.liv.ac.uk/va/2017/01/18/real-hardware-testing-of-autonomous-vehicle-platooning-demo/
 
 
 ====== links to simulation demo ===========
+
 1. http://wordpress.csc.liv.ac.uk/va/2016/05/18/autonomous-vehicle-platooning-demo/
 
