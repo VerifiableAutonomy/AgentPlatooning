@@ -1,0 +1,56 @@
+:name: vehicle
+
+:Initial Beliefs:
+// Agent starts believing it is not in a  platoon
+speed_controller(0)
+steering_controller(0)
+leave_ok
+not_stopped
+
+:Reasoning Rules:
+
+platoon_m(X, Y):- platoon_ok, name(X);
+leave_platoon:- leave_ok;
+set_spacing(X):- ack_spacing(X);
+
+
+:Initial Goals:
+
+:Plans:
+
+	/* Default plans for handling messages */
+	+.received(:tell, B): {True} <- +B;   
+	+.received(:perform, G): {True} <- +!G [perform];
+	+.received(:achieve, G): {True} <- +!G [achieve];
+
+
+//===========initialisation phase-- vehicles learn about their name, id and roles (leader/follower)
++stop_initial_state: {True}<- +!emergency [perform];
+
++platoon_set_up(X, Y): {B name(X), B preceding(Y)}<- 
+	+.lock,
+	perf(emergency_stop(0)),
+	perf(speed_controller(1)),
+	perf(steering_controller(1)),
+	+platoon_m(X, Y),
+	.send(leader, :tell, initial_membership(X, Y)),
+	print(set_up_done),
+	-.lock;
+
+
++!emergency [perform]:{True}<- perf(emergency_stop(1));
+
+
++ready_to_join: {B name(Name), ~B id(1), B name_front(FRONT), ~B platoon_m(Name, FRONT),
+		~G do_leave [perform], ~G do_join[perform]} <- print(do_join_goal_is_set_up), 
+		.send(leader, :tell, message(SENDER, 1, FRONT)), print(sent_to_leader_join_req),
+		*join_agreement(SENDER, FRONT);
+		
+		
++message(SENDER, REQ, FRONT): {REQ ==1, B id(1)}<-
+							.send(SENDER, :tell, join_agreement(SENDER, FRONT)), 
+							 *message(SENDER, 2);
+								
+//================= leader abstraction ========================
++initial_membership(X,Y): {B name(leader), B name(Name)} <- .send(X, :tell, ackMembership(Name, X)), -initial_membership;								
+								

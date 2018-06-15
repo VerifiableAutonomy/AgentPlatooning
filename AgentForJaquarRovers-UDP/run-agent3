@@ -1,0 +1,2 @@
+#!/bin/bash
+echo 3 none | java -jar testJar.jar /$HOME/AgentForJaquarRovers-UDP/platooningImplementationAgent3.ail

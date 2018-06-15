@@ -1,0 +1,40 @@
+:abstraction: vehicle
+
+:Initial Beliefs:
+
+init_max_dist(3) // maximum initial distance to switch to steering control
+set_up_time(6)
+time_to_join(10)
+time_to_leave(20)
+
+:Initial Goals:
+
+:Plans:
+	
+	/* Default plans for handling messages */
+	+.received(:tell, B): {True} <- +B;   
+	+.received(:perform, G): {True} <- +!G [perform];
+	+.received(:achieve, G): {True} <- +!G [achieve];
+
++distance(X): {X< 3, ~B set_up_req_sent}<- assert_shared(stop_initial_state), print(X), -distance(X); 
+
++distance(X): {3< X, ~B set_up_req_sent, B name(NAME), B preceding(PREC)} <- assert_shared(platoon_set_up(NAME,PREC)), +set_up_req_sent;
+
++id(X,Y,Z): {True}<- assert_shared(name(X)), assert_shared(id(Y)), assert_shared(preceding(Z));
+
++j_pos(X,Y): {True}<- assert_shared(name_front(X)), assert_shared(id_front(Y));
+
++allowed_position(X): {True}<- assert_shared(allowed_position(X));
+	
++platoon_m(X, Y): {True}<- assert_shared(platoon_m(X,Y));
+
+//+timeStamp(X): {~B id(2), ~B set_up_time(Y), ~B platoon_set_up, B name(NAME), B preceding(PREC)}<- assert_shared(platoon_set_up(NAME,PREC)),print(set_up_started);
+
+//+timeStamp(X): {B id(2), B time_to_join(Y), 0 < X, ~B ready_to_join}<- print(ready_to_join), assert_shared(ready_to_join); 
+
++!speed_controller(X) [perform]: {True}<- run(pred(speed_controller),args(X)), print(speedControllerSwitched);
+
++!steering_controller(X)[perform]: {True}<- run(pred(steering_controller), args(X)), print(steeringControllerSwitched);
+
++!emergency_stop(X) [perform]: {True}<- run(pred(stop),arg(X)), print(emergencyStopSwitched);
+

@@ -4,11 +4,12 @@ BDI agent codes for autonomous vehicle platooning
 This repository contains:
 
 1- guideline for running our hybrid agent-based platooning model using TORCS simulation
-1- guideline for regenerating the verification results for platooning
-2- guidleline for regenerating of untimed automaton from agent model
-3- links to Uppaal model of platooning
-4- links to real hardware test demo
-5- links to simulation demo
+2- guideline for regenerating the verification results for platooning
+3- guideline for regenerating of untimed automaton from agent model
+4- links to Uppaal model of platooning
+5- agent code used on Jaquar Rovers
+6- links to real hardware test demo
+7- links to simulation demo
 
 
 ====== running the hybrid agent-based platooning model using TORCS simulation ==========
@@ -78,6 +79,12 @@ This repository contains:
 	git clone https://github.com/VerifiableAutonomy/AgentPlatooning
 
 2. Open the Uppaal model from UppaalPlatooningModel folder
+
+======= UDP model of the agent code for real hardware test =============
+
+1. Checkout this repository
+
+	git clone https://github.com/VerifiableAutonomy/AgentPlatooning
 
 ======= links to realhardware test demo =========
 

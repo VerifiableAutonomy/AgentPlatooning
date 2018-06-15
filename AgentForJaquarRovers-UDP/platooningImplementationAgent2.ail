@@ -1,0 +1,18 @@
+
+env = eass.imp.platooning.udp.PlatoonEnvironment
+
+
+mas.agent.1.file= /Users/maryam/Desktop/ImpPlatooningUDP/platooning_agent.eass
+mas.agent.1.builder= eass.EASSAgentBuilder
+mas.agent.1.name= agent2
+mas.agent.2.file= /Users/maryam/Desktop/ImpPlatooningUDP/abstraction_platooning_agent.eass
+mas.agent.2.builder= eass.EASSAgentBuilder
+mas.agent.2.name= abstraction_agent2
+
+log.warning = ajpf.MCAPLAgent,ajpf.MCAPLcontroller
+log.info = eass.mas.DefaultEnvironment,eass.imp.platooning.udp.PlatoonEnvironment
+//log.info = eass.mas.DefaultEnvironment
+log.format = brief
+//log.fine = ail.semantics.AILAgent
+//log.fine = ail.syntax.EvaluationAndRuleBaseIterator
+
