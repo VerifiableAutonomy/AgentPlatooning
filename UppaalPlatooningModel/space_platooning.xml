@@ -658,7 +658,7 @@ clock delay;</declaration>
 		<transition>
 			<source ref="id39"/>
 			<target ref="id42"/>
-			<label kind="guard" x="-314" y="59">delay&gt;0</label>
+			<label kind="guard" x="-314" y="59">delay&gt;1</label>
 			<label kind="assignment" x="-313" y="42">pc = 0</label>
 			<nail x="-127" y="42"/>
 			<nail x="-331" y="42"/>
@@ -1167,13 +1167,13 @@ l
 		<query>
 			<formula>E&lt;&gt; a2.leave_completed
 			</formula>
-			<comment>Proof Obligation to show the correctness of our refinement step 
+			<comment>Proof Obligation to show the correctness of our refinement step
 			</comment>
 		</query>
 		<query>
 			<formula>E&lt;&gt; a2.join_completed
 			</formula>
-			<comment>Proof Obligation to show the correctness of our refinement step 
+			<comment>Proof Obligation to show the correctness of our refinement step
 			</comment>
 		</query>
 		<query>
